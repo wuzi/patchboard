@@ -282,3 +282,11 @@ func (c *Client) NewPost(t *testing.T, title string) api.PostDetail {
 	c.Do("POST", "/api/posts", map[string]any{"title": title}).Want(t, 201).JSON(t, &p)
 	return p
 }
+
+// Vote upvotes a post as this client.
+func (c *Client) Vote(t *testing.T, postID int64) api.VoteState {
+	t.Helper()
+	var v api.VoteState
+	c.Do("POST", fmt.Sprintf("/api/posts/%d/vote", postID), nil).Want(t, 200).JSON(t, &v)
+	return v
+}

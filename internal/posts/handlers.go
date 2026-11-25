@@ -13,6 +13,8 @@ func (s *Service) Register(mux *http.ServeMux, requireAdmin func(http.Handler) h
 	mux.Handle("GET /api/posts/{id}", httpx.HandlerFunc(s.handleGet))
 	mux.Handle("PATCH /api/posts/{id}", httpx.HandlerFunc(s.handleUpdate))
 	mux.Handle("DELETE /api/posts/{id}", httpx.HandlerFunc(s.handleDelete))
+	mux.Handle("POST /api/posts/{id}/vote", s.handleVote(true))
+	mux.Handle("DELETE /api/posts/{id}/vote", s.handleVote(false))
 }
 
 func postID(r *http.Request) (int64, error) {
