@@ -12,6 +12,7 @@ import (
 	"patchboard/internal/config"
 	"patchboard/internal/httpx"
 	"patchboard/internal/markdown"
+	"patchboard/internal/posts"
 )
 
 type Deps struct {
@@ -35,6 +36,11 @@ func New(d Deps) (http.Handler, error) {
 	authSvc.RegisterAdmin(mux)
 	boardSvc := board.NewService(d.DB)
 	boardSvc.Register(mux, authSvc.RequireAdmin)
+	postsSvc := posts.NewService(posts.Deps{
+		DB: d.DB, Clock: d.Clock, Auth: authSvc, Board: boardSvc,
+		Comments: noComments, Images: noImages{},
+	})
+	postsSvc.Register(mux, authSvc.RequireAdmin)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		if err := d.DB.PingContext(r.Context()); err != nil {
 			http.Error(w, "db unavailable", http.StatusServiceUnavailable)

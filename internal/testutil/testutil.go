@@ -21,6 +21,7 @@ import (
 	"testing/fstest"
 	"time"
 
+	"patchboard/internal/api"
 	"patchboard/internal/auth"
 	"patchboard/internal/clock"
 	"patchboard/internal/config"
@@ -272,4 +273,12 @@ func InsertPost(t *testing.T, db *sql.DB, title string, statusID int64) int64 {
 	}
 	id, _ := res.LastInsertId()
 	return id
+}
+
+// NewPost creates a post through the API as this client.
+func (c *Client) NewPost(t *testing.T, title string) api.PostDetail {
+	t.Helper()
+	var p api.PostDetail
+	c.Do("POST", "/api/posts", map[string]any{"title": title}).Want(t, 201).JSON(t, &p)
+	return p
 }
