@@ -1,4 +1,4 @@
-.PHONY: sqlc test run web build e2e
+.PHONY: sqlc test run web build e2e docker
 
 sqlc:
 	go tool sqlc generate
@@ -26,3 +26,6 @@ e2e/node_modules: e2e/package-lock.json
 
 e2e: e2e/node_modules
 	cd e2e && npx playwright test
+
+docker:
+	docker build -t patchboard .
