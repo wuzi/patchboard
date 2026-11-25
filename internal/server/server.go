@@ -2,13 +2,16 @@
 package server
 
 import (
+	"context"
 	"database/sql"
 	"io/fs"
 	"net/http"
 
+	"patchboard/internal/api"
 	"patchboard/internal/auth"
 	"patchboard/internal/board"
 	"patchboard/internal/clock"
+	"patchboard/internal/comments"
 	"patchboard/internal/config"
 	"patchboard/internal/httpx"
 	"patchboard/internal/markdown"
@@ -36,11 +39,17 @@ func New(d Deps) (http.Handler, error) {
 	authSvc.RegisterAdmin(mux)
 	boardSvc := board.NewService(d.DB)
 	boardSvc.Register(mux, authSvc.RequireAdmin)
+	var commentsSvc *comments.Service
 	postsSvc := posts.NewService(posts.Deps{
 		DB: d.DB, Clock: d.Clock, Auth: authSvc, Board: boardSvc,
-		Comments: noComments, Images: noImages{},
+		Comments: func(ctx context.Context, postID int64, viewer *auth.Actor) ([]api.Comment, error) {
+			return commentsSvc.ForPost(ctx, postID, viewer)
+		},
+		Images: noImages{},
 	})
 	postsSvc.Register(mux, authSvc.RequireAdmin)
+	commentsSvc = comments.NewService(d.DB, d.Clock, authSvc, postsSvc)
+	commentsSvc.Register(mux)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		if err := d.DB.PingContext(r.Context()); err != nil {
 			http.Error(w, "db unavailable", http.StatusServiceUnavailable)

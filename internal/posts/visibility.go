@@ -1,6 +1,10 @@
 package posts
 
 import (
+	"context"
+	"database/sql"
+	"errors"
+
 	"patchboard/internal/auth"
 	"patchboard/internal/store/gen"
 )
@@ -34,4 +38,15 @@ func canEdit(p postRow, viewer *auth.Actor, defaultStatusID int64) bool {
 		return true
 	}
 	return isAuthor(p, viewer) && !p.DeletedAt.Valid && p.StatusID == defaultStatusID
+}
+
+// VisibleTo reports whether viewer may see (and so interact with) the post; merged posts are not.
+func (s *Service) VisibleTo(ctx context.Context, postID int64, viewer *auth.Actor) (bool, error) {
+	p, err := s.q.GetPostFull(ctx, postID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	return !p.MergedIntoID.Valid && visible(p, viewer), nil
 }
