@@ -1,0 +1,54 @@
+@let b = store.board();
+<header class="head">
+  @if (b?.logoUrl; as logo) {<img class="logo" [src]="logo" alt="" />}
+  <h1>{{ i18n.name(b?.title) }}</h1>
+  @if (i18n.name(b?.description); as d) {<p class="desc">{{ d }}</p>}
+
+  <div class="bar">
+    <nav class="tabs" [attr.aria-label]="i18n.name(b?.title)">
+      @for (t of tabs; track t.view) {
+        <a class="tab" [routerLink]="t.link" queryParamsHandling="preserve" [class.active]="background() === t.view"
+          [attr.aria-current]="background() === t.view ? 'page' : null"><pb-icon [name]="t.icon" />{{ i18n.t(t.label) }}</a>
+      }
+    </nav>
+    <div class="tools">
+      @if (background() !== 'updates') {
+        <button type="button" class="icon-btn" [class.on]="searchOpen()" [attr.aria-label]="i18n.t('nav.search')"
+          [attr.aria-expanded]="searchOpen()" (click)="toggleSearch()"><pb-icon name="search" /></button>
+        <div class="filter-wrap">
+          <button type="button" class="icon-btn" [class.on]="hasFilters()" [attr.aria-label]="i18n.t('nav.filter')"
+            [attr.aria-expanded]="filterOpen()" (click)="filterOpen.set(!filterOpen())"><pb-icon name="filter" /></button>
+          @if (filterOpen()) {
+            <div class="popover" role="group" [attr.aria-label]="i18n.t('nav.filter')">
+              @if (background() === 'list') {
+                <label class="field"><span>{{ i18n.t('status.label') }}</span>
+                  <select class="input" [value]="query().status ?? ''" (change)="setFilter('status', $any($event.target).value)">
+                    <option value="">{{ i18n.t('nav.allStatuses') }}</option>
+                    @for (s of store.statuses(); track s.id) {<option [value]="s.id">{{ i18n.name(s.name) }}</option>}
+                  </select>
+                </label>
+              }
+              <label class="field"><span>{{ i18n.t('post.tagLabel') }}</span>
+                <select class="input" [value]="query().tag ?? ''" (change)="setFilter('tag', $any($event.target).value)">
+                  <option value="">{{ i18n.t('nav.allTags') }}</option>
+                  @for (t of store.tags(); track t.id) {<option [value]="t.id">{{ i18n.name(t.name) }}</option>}
+                </select>
+              </label>
+              @if (hasFilters()) {<button type="button" class="btn ghost" (click)="clearFilters()">{{ i18n.t('nav.clearFilters') }}</button>}
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+  @if (searchOpen() && background() !== 'updates') {
+    <input #search class="input search" type="search" [placeholder]="i18n.t('nav.searchPlaceholder')"
+      [value]="query().q" (input)="onSearch($any($event.target).value)" />
+  }
+</header>
+
+@switch (background()) {
+  @case ('list') {<section class="body"><pb-list-view /></section>}
+  @case ('roadmap') {<section class="body wide"></section>}
+  @case ('updates') {<section class="body"></section>}
+}
