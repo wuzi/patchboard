@@ -38,16 +38,24 @@ func (s *Service) handleLogin(w http.ResponseWriter, r *http.Request) error {
 	}
 	a := ActorFrom(r.Context())
 	username := strings.ToLower(strings.TrimSpace(req.Username))
-	if ok, retry := s.lim.Allow(httpx.RuleLoginIP, a.Info.IPHash); !ok {
-		return httpx.RateLimited(retry)
+	// Only failed attempts count toward the limits, so a team sharing one IP can still sign in.
+	for _, c := range []struct {
+		rule httpx.Rule
+		key  string
+	}{{httpx.RuleLoginIP, a.Info.IPHash}, {httpx.RuleLoginUser, username}} {
+		if over, retry := s.lim.Exceeded(c.rule, c.key); over {
+			return httpx.RateLimited(retry)
+		}
 	}
-	if ok, retry := s.lim.Allow(httpx.RuleLoginUser, username); !ok {
-		return httpx.RateLimited(retry)
+	failed := func() error {
+		s.lim.Allow(httpx.RuleLoginIP, a.Info.IPHash)
+		s.lim.Allow(httpx.RuleLoginUser, username)
+		return invalidCredentials()
 	}
 	row, err := s.q.GetAdminByUsername(r.Context(), username)
 	if isNoRows(err) {
 		VerifyPassword(dummyHash, req.Password)
-		return invalidCredentials()
+		return failed()
 	} else if err != nil {
 		return err
 	}
@@ -56,7 +64,7 @@ func (s *Service) handleLogin(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if !ok || row.DisabledAt.Valid {
-		return invalidCredentials()
+		return failed()
 	}
 	if err := s.startSession(r.Context(), w, s.q, row.ID); err != nil {
 		return err

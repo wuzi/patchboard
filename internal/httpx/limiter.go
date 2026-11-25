@@ -68,3 +68,15 @@ func RateLimited(retry time.Duration) *Error {
 	e.RetryAfter = retry
 	return e
 }
+
+// Exceeded reports whether the rule's limit is already reached for key, without recording a call.
+func (l *Limiter) Exceeded(rule Rule, key string) (bool, time.Duration) {
+	now := l.clock.Now()
+	start := now.Truncate(rule.Window)
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.counts[windowKey{rule.Name, key, start.UnixNano()}] >= rule.Limit {
+		return true, start.Add(rule.Window).Sub(now)
+	}
+	return false, 0
+}

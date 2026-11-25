@@ -3,10 +3,12 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, NavigationEnd, Router, RouterLink } from '@angular/router';
 import { debounceTime, filter, map, Subject } from 'rxjs';
+import { BoardEvents } from '../../core/board-events';
 import { BoardStore } from '../../core/board.store';
 import { I18n } from '../../core/i18n/i18n';
 import { NavState, type BoardView } from '../../core/nav-state';
 import { Icon } from '../../shared/icon';
+import { NewPostDialog } from '../post/new-post-dialog';
 import { PostModal } from '../post/post-modal';
 import { boardQuery, ListView } from './list-view';
 
@@ -14,7 +16,7 @@ type View = BoardView | 'post';
 
 @Component({
   selector: 'pb-board-shell',
-  imports: [RouterLink, Icon, ListView, PostModal],
+  imports: [RouterLink, Icon, ListView, PostModal, NewPostDialog],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './board-shell.html',
   styleUrl: './board-shell.scss',
@@ -22,6 +24,7 @@ type View = BoardView | 'post';
 export class BoardShell {
   protected readonly i18n = inject(I18n);
   protected readonly store = inject(BoardStore);
+  protected readonly events = inject(BoardEvents);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly nav = inject(NavState);

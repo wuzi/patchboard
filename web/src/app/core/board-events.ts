@@ -8,6 +8,8 @@ export class BoardEvents {
   readonly votes = new Subject<{ postId: number; state: VoteState }>();
   /** Bumped whenever posts change in a way lists should reload for (create, delete, status change…). */
   readonly revision = signal(0);
+  /** Whether the "new post" dialog is open (any view can open it). */
+  readonly newPostOpen = signal(false);
 
   changed(): void {
     this.revision.update((n) => n + 1);

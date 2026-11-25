@@ -172,3 +172,11 @@ func TestUpdateAdminMe(t *testing.T) {
 }
 
 func itoa(n int64) string { return strconv.FormatInt(n, 10) }
+
+func TestLogin_SuccessDoesNotCountTowardLimit(t *testing.T) {
+	app := testutil.New(t)
+	createAdmin(t, app, "wuzi", "correct-horse-1")
+	for i := 0; i < 12; i++ {
+		login(app.Client(t).WithIP("203.0.113.90"), "wuzi", "correct-horse-1").Want(t, 200)
+	}
+}

@@ -126,3 +126,19 @@ func TestRequestInfo(t *testing.T) {
 		t.Fatalf("info = %+v", got)
 	}
 }
+
+func TestLimiter_ExceededDoesNotRecord(t *testing.T) {
+	c := clock.NewFake(time.Date(2026, 11, 25, 12, 0, 0, 0, time.UTC))
+	l := httpx.NewLimiter(c)
+	rule := httpx.Rule{Name: "x", Limit: 2, Window: time.Minute}
+	for i := 0; i < 5; i++ {
+		if over, _ := l.Exceeded(rule, "k"); over {
+			t.Fatal("peeking must not consume the limit")
+		}
+	}
+	l.Allow(rule, "k")
+	l.Allow(rule, "k")
+	if over, retry := l.Exceeded(rule, "k"); !over || retry <= 0 {
+		t.Fatalf("over=%v retry=%v", over, retry)
+	}
+}

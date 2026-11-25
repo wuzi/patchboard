@@ -77,7 +77,7 @@ export const pt = {
   'editor.link': 'Link',
   'editor.bullet': 'Lista',
   'editor.number': 'Lista numerada',
-  'editor.heading': 'Título',
+  'editor.heading': 'Cabeçalho',
   'editor.code': 'Código',
   'editor.nothingToPreview': 'Nada para visualizar',
 

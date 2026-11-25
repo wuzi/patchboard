@@ -7,6 +7,7 @@ import type { PostCard as Card, Sort } from '../../core/api.types';
 import { BoardEvents } from '../../core/board-events';
 import { I18n, type TKey } from '../../core/i18n/i18n';
 import { Toast } from '../../core/toast';
+import { Icon } from '../../shared/icon';
 import { PostCard } from '../../shared/post-card';
 
 export type ListQuery = { sort: Sort; status: number | null; tag: number | null; q: string };
@@ -33,14 +34,17 @@ export function boardQuery(route: ActivatedRoute) {
 
 @Component({
   selector: 'pb-list-view',
-  imports: [PostCard],
+  imports: [PostCard, Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
+    <div class="list-head">
     <div class="sorts" role="tablist" [attr.aria-label]="i18n.t('nav.list')">
       @for (s of sorts; track s.value) {
         <button type="button" role="tab" class="sort" [class.active]="query().sort === s.value"
           [attr.aria-selected]="query().sort === s.value" (click)="setSort(s.value)">{{ i18n.t(s.label) }}</button>
       }
+    </div>
+    <button type="button" class="btn add" (click)="events.newPostOpen.set(true)"><pb-icon name="plus" />{{ i18n.t('post.add') }}</button>
     </div>
     @if (loading() && posts().length === 0) {
       <p class="empty">{{ i18n.t('common.loading') }}</p>
@@ -56,7 +60,8 @@ export function boardQuery(route: ActivatedRoute) {
     }
   `,
   styles: `
-    .sorts { display: flex; gap: 4px; margin-bottom: 14px; }
+    .list-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+    .sorts { display: flex; gap: 4px; }
     .sort { padding: 6px 12px; border-radius: 999px; border: 0; background: transparent; color: var(--pb-muted);
       font-size: 14px; font-weight: 500; cursor: pointer; }
     .sort:hover { background: var(--pb-hover); color: var(--pb-text); }
@@ -71,7 +76,7 @@ export class ListView {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly toast = inject(Toast);
-  private readonly events = inject(BoardEvents);
+  protected readonly events = inject(BoardEvents);
 
   protected readonly sorts: { value: Sort; label: TKey }[] = [
     { value: 'trending', label: 'sort.trending' },

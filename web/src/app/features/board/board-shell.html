@@ -12,6 +12,8 @@
       }
     </nav>
     <div class="tools">
+      <button type="button" class="icon-btn" [attr.aria-label]="i18n.t('post.add')" [attr.title]="i18n.t('post.add')"
+        (click)="events.newPostOpen.set(true)"><pb-icon name="plus" /></button>
       @if (background() !== 'updates') {
         <button type="button" class="icon-btn" [class.on]="searchOpen()" [attr.aria-label]="i18n.t('nav.search')"
           [attr.aria-expanded]="searchOpen()" (click)="toggleSearch()"><pb-icon name="search" /></button>
@@ -55,4 +57,8 @@
 
 @if (view() === 'post' && idSlug(); as slug) {
   <pb-post-modal [idSlug]="slug" />
+}
+
+@if (events.newPostOpen()) {
+  <pb-new-post-dialog (closed)="events.newPostOpen.set(false)" />
 }
