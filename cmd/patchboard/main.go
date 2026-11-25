@@ -25,6 +25,9 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, getenv func(s
 		}
 		return 0
 	}
+	if args[0] == "admin" {
+		return adminCmd(args[1:], stdin, stdout, stderr, getenv)
+	}
 	fmt.Fprint(stderr, usage)
 	return 2
 }

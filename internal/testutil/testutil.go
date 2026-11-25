@@ -15,11 +15,13 @@ import (
 	"net/netip"
 	"net/url"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"testing/fstest"
 	"time"
 
+	"patchboard/internal/auth"
 	"patchboard/internal/clock"
 	"patchboard/internal/config"
 	"patchboard/internal/server"
@@ -242,4 +244,19 @@ func Exec(t *testing.T, db *sql.DB, query string, args ...any) {
 	if _, err := db.Exec(query, args...); err != nil {
 		t.Fatalf("exec %q: %v", query, err)
 	}
+}
+
+// AdminPassword is the password AdminClient gives every admin it creates.
+const AdminPassword = "correct-horse-1"
+
+// AdminClient creates an admin (display name = username title-cased) and returns a logged-in client.
+func (a *App) AdminClient(t *testing.T, username string) *Client {
+	t.Helper()
+	display := strings.ToUpper(username[:1]) + username[1:]
+	if _, err := auth.CreateAdmin(context.Background(), a.DB, a.Clock.Now(), username, display, AdminPassword); err != nil {
+		t.Fatalf("create admin: %v", err)
+	}
+	c := a.Client(t)
+	c.Do("POST", "/api/admin/login", map[string]string{"username": username, "password": AdminPassword}).Want(t, 200)
+	return c
 }

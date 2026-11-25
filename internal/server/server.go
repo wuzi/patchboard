@@ -31,6 +31,7 @@ func New(d Deps) (http.Handler, error) {
 	authSvc := auth.NewService(d.DB, d.Clock, d.Limiter, d.Cfg)
 	mux := http.NewServeMux()
 	authSvc.Register(mux)
+	authSvc.RegisterAdmin(mux)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		if err := d.DB.PingContext(r.Context()); err != nil {
 			http.Error(w, "db unavailable", http.StatusServiceUnavailable)
