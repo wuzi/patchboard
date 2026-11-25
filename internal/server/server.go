@@ -16,10 +16,16 @@ type Deps struct {
 	DB    *sql.DB
 	Clock clock.Clock
 	WebFS fs.FS
+	// Limiter is shared by all handlers; nil means New creates one.
+	Limiter *httpx.Limiter
 }
 
 // New builds the full route table.
 func New(d Deps) (http.Handler, error) {
+	if d.Limiter == nil {
+		d.Limiter = httpx.NewLimiter(d.Clock)
+	}
+	hasher := httpx.NewIPHasher(d.Cfg.Secret)
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		if err := d.DB.PingContext(r.Context()); err != nil {
@@ -32,5 +38,8 @@ func New(d Deps) (http.Handler, error) {
 	mux.Handle("/api/", httpx.HandlerFunc(func(w http.ResponseWriter, r *http.Request) error {
 		return httpx.ErrNotFound
 	}))
-	return mux, nil
+	var h http.Handler = mux
+	h = httpx.CSRF(h)
+	h = httpx.RequestInfo(d.Cfg.TrustedProxies, hasher)(h)
+	return h, nil
 }
