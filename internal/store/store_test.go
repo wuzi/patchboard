@@ -123,3 +123,25 @@ func TestSchema_FTSTracksPostChanges(t *testing.T) {
 		t.Fatalf("match after delete = %d", n)
 	}
 }
+
+func TestMigrate_ConcurrentProcesses(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "pb.db")
+	const n = 4
+	errs := make(chan error, n)
+	for i := 0; i < n; i++ {
+		go func() {
+			db, err := store.Open(path)
+			if err != nil {
+				errs <- err
+				return
+			}
+			defer db.Close()
+			errs <- store.Migrate(context.Background(), db)
+		}()
+	}
+	for i := 0; i < n; i++ {
+		if err := <-errs; err != nil {
+			t.Fatalf("concurrent migrate: %v", err)
+		}
+	}
+}
