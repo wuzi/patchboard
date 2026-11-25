@@ -41,6 +41,7 @@
           }
         </div>
       }
+      <pb-profile-menu />
     </div>
   </div>
   @if (searchOpen() && background() !== 'updates') {
@@ -52,7 +53,7 @@
 @switch (background()) {
   @case ('list') {<section class="body"><pb-list-view /></section>}
   @case ('roadmap') {<section class="body wide"><pb-roadmap-view /></section>}
-  @case ('updates') {<section class="body"></section>}
+  @case ('updates') {<section class="body"><pb-updates-view /></section>}
 }
 
 @if (view() === 'post' && idSlug(); as slug) {

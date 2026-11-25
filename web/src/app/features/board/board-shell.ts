@@ -6,18 +6,21 @@ import { debounceTime, filter, map, Subject } from 'rxjs';
 import { BoardEvents } from '../../core/board-events';
 import { BoardStore } from '../../core/board.store';
 import { I18n } from '../../core/i18n/i18n';
+import { Toast } from '../../core/toast';
 import { NavState, type BoardView } from '../../core/nav-state';
 import { Icon } from '../../shared/icon';
 import { NewPostDialog } from '../post/new-post-dialog';
 import { PostModal } from '../post/post-modal';
 import { boardQuery, ListView } from './list-view';
 import { RoadmapView } from './roadmap-view';
+import { UpdatesView } from './updates-view';
+import { ProfileMenu } from '../profile/profile-menu';
 
 type View = BoardView | 'post';
 
 @Component({
   selector: 'pb-board-shell',
-  imports: [RouterLink, Icon, ListView, RoadmapView, PostModal, NewPostDialog],
+  imports: [RouterLink, Icon, ListView, RoadmapView, UpdatesView, ProfileMenu, PostModal, NewPostDialog],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './board-shell.html',
   styleUrl: './board-shell.scss',
@@ -30,6 +33,7 @@ export class BoardShell {
   private readonly router = inject(Router);
   private readonly nav = inject(NavState);
   private readonly title = inject(Title);
+  private readonly toast = inject(Toast);
 
   protected readonly view = toSignal(this.route.data.pipe(map((d) => d['view'] as View)), { initialValue: 'list' as View });
   protected readonly idSlug = toSignal(this.route.paramMap.pipe(map((p) => p.get('idSlug'))), { initialValue: null });
@@ -61,10 +65,20 @@ export class BoardShell {
       this.router.navigate([], { queryParams: { q: q.trim() || null }, queryParamsHandling: 'merge', replaceUrl: true }),
     );
     if (this.query().q) this.searchOpen.set(true);
+    this.announceRecovery();
     effect(() => {
       const b = this.store.board();
       if (b && this.view() !== 'post') this.title.setTitle(this.i18n.name(b.title));
     });
+  }
+
+  /** /r/<token> redirects to /?recovered=1|0; tell the player and drop the param. */
+  private announceRecovery(): void {
+    const r = this.route.snapshot.queryParamMap.get('recovered');
+    if (r === null) return;
+    if (r === '1') this.toast.show(this.i18n.t('profile.recovered'));
+    else this.toast.show(this.i18n.t('profile.recoverFailed'), 'error');
+    this.router.navigate([], { queryParams: { recovered: null }, queryParamsHandling: 'merge', replaceUrl: true });
   }
 
   private remember(): void {
