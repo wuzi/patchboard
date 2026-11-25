@@ -9,6 +9,7 @@ import (
 	"patchboard/internal/clock"
 	"patchboard/internal/config"
 	"patchboard/internal/httpx"
+	"patchboard/internal/markdown"
 )
 
 type Deps struct {
@@ -35,6 +36,7 @@ func New(d Deps) (http.Handler, error) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		_, _ = w.Write([]byte("ok"))
 	})
+	mux.Handle("POST /api/markdown/preview", markdown.PreviewHandler(d.Limiter))
 	mux.Handle("/api/", httpx.HandlerFunc(func(w http.ResponseWriter, r *http.Request) error {
 		return httpx.ErrNotFound
 	}))
