@@ -11,12 +11,13 @@ import { Icon } from '../../shared/icon';
 import { NewPostDialog } from '../post/new-post-dialog';
 import { PostModal } from '../post/post-modal';
 import { boardQuery, ListView } from './list-view';
+import { RoadmapView } from './roadmap-view';
 
 type View = BoardView | 'post';
 
 @Component({
   selector: 'pb-board-shell',
-  imports: [RouterLink, Icon, ListView, PostModal, NewPostDialog],
+  imports: [RouterLink, Icon, ListView, RoadmapView, PostModal, NewPostDialog],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './board-shell.html',
   styleUrl: './board-shell.scss',
