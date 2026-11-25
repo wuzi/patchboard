@@ -18,6 +18,7 @@ func (s *Service) Register(mux *http.ServeMux, requireAdmin func(http.Handler) h
 	mux.Handle("DELETE /api/posts/{id}", httpx.HandlerFunc(s.handleDelete))
 	mux.Handle("POST /api/posts/{id}/vote", s.handleVote(true))
 	mux.Handle("DELETE /api/posts/{id}/vote", s.handleVote(false))
+	mux.Handle("POST /api/admin/posts/{id}/status", requireAdmin(httpx.HandlerFunc(s.handleChangeStatus)))
 }
 
 func postID(r *http.Request) (int64, error) {

@@ -36,3 +36,9 @@ WHERE v.post_id = ? ORDER BY v.created_at DESC, v.guest_id LIMIT 3;
 
 -- name: CountVotesSince :one
 SELECT count(*) FROM votes WHERE post_id = ? AND created_at >= ?;
+
+-- name: SetPostStatus :exec
+UPDATE posts SET status_id = ?, updated_at = ? WHERE id = ?;
+
+-- name: SetPostResponse :exec
+UPDATE posts SET response_md = ?, response_html = ?, response_admin_id = ?, response_at = ? WHERE id = ?;

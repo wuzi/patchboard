@@ -247,3 +247,17 @@ type Trash struct {
 	Posts    []TrashPost    `json:"posts"`
 	Comments []TrashComment `json:"comments"`
 }
+
+// UpdateDraft is the Update published together with a status change.
+type UpdateDraft struct {
+	Title string `json:"title"`
+	Body  string `json:"body"`
+}
+
+// ChangeStatusRequest is the body of POST /api/admin/posts/{id}/status.
+// Response nil keeps the current team response, "" clears it.
+type ChangeStatusRequest struct {
+	StatusID int64        `json:"statusId"`
+	Response *string      `json:"response"`
+	Update   *UpdateDraft `json:"update"`
+}

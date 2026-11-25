@@ -215,6 +215,44 @@ func (q *Queries) RecentVoters(ctx context.Context, postID int64) ([]RecentVoter
 	return items, nil
 }
 
+const setPostResponse = `-- name: SetPostResponse :exec
+UPDATE posts SET response_md = ?, response_html = ?, response_admin_id = ?, response_at = ? WHERE id = ?
+`
+
+type SetPostResponseParams struct {
+	ResponseMd      sql.NullString
+	ResponseHtml    sql.NullString
+	ResponseAdminID sql.NullInt64
+	ResponseAt      sql.NullInt64
+	ID              int64
+}
+
+func (q *Queries) SetPostResponse(ctx context.Context, arg SetPostResponseParams) error {
+	_, err := q.db.ExecContext(ctx, setPostResponse,
+		arg.ResponseMd,
+		arg.ResponseHtml,
+		arg.ResponseAdminID,
+		arg.ResponseAt,
+		arg.ID,
+	)
+	return err
+}
+
+const setPostStatus = `-- name: SetPostStatus :exec
+UPDATE posts SET status_id = ?, updated_at = ? WHERE id = ?
+`
+
+type SetPostStatusParams struct {
+	StatusID  int64
+	UpdatedAt int64
+	ID        int64
+}
+
+func (q *Queries) SetPostStatus(ctx context.Context, arg SetPostStatusParams) error {
+	_, err := q.db.ExecContext(ctx, setPostStatus, arg.StatusID, arg.UpdatedAt, arg.ID)
+	return err
+}
+
 const softDeletePost = `-- name: SoftDeletePost :exec
 UPDATE posts SET deleted_at = ?, deleted_by_admin_id = ? WHERE id = ?
 `

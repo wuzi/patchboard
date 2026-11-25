@@ -16,6 +16,7 @@ import (
 	"patchboard/internal/httpx"
 	"patchboard/internal/markdown"
 	"patchboard/internal/posts"
+	"patchboard/internal/updates"
 	"patchboard/internal/uploads"
 )
 
@@ -42,13 +43,16 @@ func New(d Deps) (http.Handler, error) {
 	boardSvc.Register(mux, authSvc.RequireAdmin)
 	uploadsSvc := uploads.NewService(d.DB, d.Clock, authSvc, boardSvc, d.Cfg.DataDir)
 	uploadsSvc.Register(mux, authSvc.RequireAdmin)
+	updatesSvc := updates.NewService(d.DB, d.Clock)
+	updatesSvc.Register(mux, authSvc.RequireAdmin)
 	var commentsSvc *comments.Service
 	postsSvc := posts.NewService(posts.Deps{
 		DB: d.DB, Clock: d.Clock, Auth: authSvc, Board: boardSvc,
 		Comments: func(ctx context.Context, postID int64, viewer *auth.Actor) ([]api.Comment, error) {
 			return commentsSvc.ForPost(ctx, postID, viewer)
 		},
-		Images: uploadsSvc,
+		Images:       uploadsSvc,
+		CreateUpdate: updatesSvc.CreateTx,
 	})
 	postsSvc.Register(mux, authSvc.RequireAdmin)
 	commentsSvc = comments.NewService(d.DB, d.Clock, authSvc, postsSvc)
