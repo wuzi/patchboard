@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	_ "modernc.org/sqlite"
 
@@ -29,11 +30,19 @@ func Open(path string) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := db.Ping(); err != nil {
-		db.Close()
-		return nil, err
+	// Two processes switching a brand-new file to WAL at once can get SQLITE_BUSY without
+	// the busy handler running; retry the first connection for up to ~5s.
+	for attempt := 0; ; attempt++ {
+		err = db.Ping()
+		if err == nil {
+			return db, nil
+		}
+		if attempt >= 50 || !strings.Contains(err.Error(), "SQLITE_BUSY") {
+			db.Close()
+			return nil, err
+		}
+		time.Sleep(100 * time.Millisecond)
 	}
-	return db, nil
 }
 
 // Migrate applies every embedded migration newer than PRAGMA user_version.

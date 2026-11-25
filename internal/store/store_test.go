@@ -3,6 +3,7 @@ package store_test
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -132,11 +133,15 @@ func TestMigrate_ConcurrentProcesses(t *testing.T) {
 		go func() {
 			db, err := store.Open(path)
 			if err != nil {
-				errs <- err
+				errs <- fmt.Errorf("open: %w", err)
 				return
 			}
 			defer db.Close()
-			errs <- store.Migrate(context.Background(), db)
+			if err := store.Migrate(context.Background(), db); err != nil {
+				errs <- fmt.Errorf("migrate: %w", err)
+				return
+			}
+			errs <- nil
 		}()
 	}
 	for i := 0; i < n; i++ {
