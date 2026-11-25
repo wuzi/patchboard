@@ -116,3 +116,24 @@ dialog.pb-dialog::backdrop { background: rgb(16 16 20 / .35); }
 .md table { border-collapse: collapse; display: block; overflow-x: auto; }
 .md th, .md td { border: 1px solid var(--pb-border); padding: 4px 8px; }
 .md a { color: var(--pb-accent); }
+
+/* Admin & auth pages */
+.auth { display: grid; place-items: center; min-height: 100dvh; padding: 16px; }
+.auth .card { width: min(400px, 100%); padding: 28px; border-radius: 20px; border: 1px solid var(--pb-border); background: var(--pb-surface); }
+.auth h1 { margin: 0 0 20px; font-size: 22px; font-weight: 600; }
+.auth .back { display: block; margin-top: 16px; text-align: center; color: var(--pb-muted); font-size: 14px; }
+.btn.wide { width: 100%; }
+.admin-title { margin: 0 0 18px; font-size: 24px; font-weight: 600; }
+.panel-card { padding: 20px; border-radius: 16px; border: 1px solid var(--pb-border); background: var(--pb-surface); margin-bottom: 16px; }
+.panel-card h2 { margin: 0 0 14px; font-size: 16px; font-weight: 600; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+@media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+.check { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; cursor: pointer; }
+.check input { width: 18px; height: 18px; accent-color: var(--pb-accent); }
+.rows { display: flex; flex-direction: column; gap: 8px; }
+.row-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--pb-border);
+  background: var(--pb-surface); flex-wrap: wrap; }
+.row-item .input { width: auto; flex: 1 1 140px; min-width: 0; }
+.row-item input[type=color] { width: 36px; height: 36px; padding: 2px; border: 1px solid var(--pb-border); border-radius: 8px; background: none; }
+.grip { cursor: grab; color: var(--pb-muted); display: inline-flex; }
+.actions-end { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
