@@ -80,3 +80,13 @@ func (l *Limiter) Exceeded(rule Rule, key string) (bool, time.Duration) {
 	}
 	return false, 0
 }
+
+// Refund gives back one call recorded by Allow in the current window (e.g. a login that succeeded).
+func (l *Limiter) Refund(rule Rule, key string) {
+	k := windowKey{rule.Name, key, l.clock.Now().Truncate(rule.Window).UnixNano()}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.counts[k] > 0 {
+		l.counts[k]--
+	}
+}

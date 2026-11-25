@@ -82,3 +82,20 @@ func TestRemoveVote(t *testing.T) {
 	testutil.Eq(t, getPost(t, g1, p.ID).Post.Voted, false)
 	testutil.Eq(t, getPost(t, g2, p.ID).Post.Voted, true)
 }
+
+func TestVoteAudit_TwoVotersOnOneIPAreFlagged(t *testing.T) {
+	app := testutil.New(t)
+	admin := app.AdminClient(t, "wuzi")
+	p := admin.NewPost(t, "Co-op")
+	a := app.Client(t).WithIP("203.0.113.81")
+	b := app.Client(t).WithIP("203.0.113.81")
+	a.Vote(t, p.ID)
+	b.Vote(t, p.ID)
+	var audit api.VoteAudit
+	admin.Do("GET", fmt.Sprintf("/api/admin/posts/%d/votes", p.ID), nil).Want(t, 200).JSON(t, &audit)
+	for _, c := range []*testutil.Client{a, b} {
+		if !has(flagsOf(audit, guestID(t, c)), "shared_ip") {
+			t.Fatalf("voter sharing an IP with one other voter not flagged: %v", flagsOf(audit, guestID(t, c)))
+		}
+	}
+}

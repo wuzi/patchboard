@@ -58,3 +58,17 @@ func TestBans_List(t *testing.T) {
 	testutil.Eq(t, admin.Do("POST", "/api/admin/bans", map[string]any{"guestId": "nope", "includeIp": false}).Want(t, 422).Field(t, "guestId"), "invalid")
 	app.Client(t).Do("GET", "/api/admin/bans", nil).Want(t, 401)
 }
+
+func TestBannedGuest_CannotEditOldContent(t *testing.T) {
+	app := testutil.New(t)
+	admin := app.AdminClient(t, "wuzi")
+	g := app.Client(t)
+	id := guestOf(t, g, "Spammer")
+	var post api.PostDetail
+	g.Do("POST", "/api/posts", map[string]any{"title": "Ideia inocente"}).Want(t, 201).JSON(t, &post)
+	var c api.Comment
+	g.Do("POST", fmt.Sprintf("/api/posts/%d/comments", post.ID), map[string]string{"body": "oi"}).Want(t, 201).JSON(t, &c)
+	admin.Do("POST", "/api/admin/bans", map[string]any{"guestId": id, "includeIp": false}).Want(t, 201)
+	testutil.Eq(t, g.Do("PATCH", fmt.Sprintf("/api/comments/%d", c.ID), map[string]string{"body": "spam"}).Want(t, 403).ErrCode(t), "banned")
+	testutil.Eq(t, g.Do("PATCH", fmt.Sprintf("/api/posts/%d", post.ID), map[string]string{"title": "Spam spam"}).Want(t, 403).ErrCode(t), "banned")
+}

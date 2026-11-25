@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync/atomic"
 
 	"golang.org/x/crypto/argon2"
 )
@@ -19,13 +20,35 @@ const (
 	argonSaltLen = 16
 )
 
+var (
+	argonActive, argonPeak atomic.Int64
+	// argonSlots caps concurrent hashes: each one holds ~19 MiB, so a burst of
+	// login requests must queue instead of exhausting memory.
+	argonSlots = make(chan struct{}, 4)
+)
+
+// argonKey runs argon2id in one of the limited slots, tracking how many run at once.
+func argonKey(pw, salt []byte, t, m uint32, p uint8, n uint32) []byte {
+	argonSlots <- struct{}{}
+	defer func() { <-argonSlots }()
+	cur := argonActive.Add(1)
+	defer argonActive.Add(-1)
+	for {
+		peak := argonPeak.Load()
+		if cur <= peak || argonPeak.CompareAndSwap(peak, cur) {
+			break
+		}
+	}
+	return argon2.IDKey(pw, salt, t, m, p, n)
+}
+
 // HashPassword returns a PHC-formatted argon2id hash.
 func HashPassword(pw string) (string, error) {
 	salt := make([]byte, argonSaltLen)
 	if _, err := rand.Read(salt); err != nil {
 		return "", err
 	}
-	key := argon2.IDKey([]byte(pw), salt, argonTime, argonMemory, argonThreads, argonKeyLen)
+	key := argonKey([]byte(pw), salt, argonTime, argonMemory, argonThreads, argonKeyLen)
 	enc := base64.RawStdEncoding
 	return fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
 		argon2.Version, argonMemory, argonTime, argonThreads, enc.EncodeToString(salt), enc.EncodeToString(key)), nil
@@ -55,7 +78,7 @@ func VerifyPassword(encoded, pw string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	got := argon2.IDKey([]byte(pw), salt, iters, mem, threads, uint32(len(want)))
+	got := argonKey([]byte(pw), salt, iters, mem, threads, uint32(len(want)))
 	return subtle.ConstantTimeCompare(got, want) == 1, nil
 }
 

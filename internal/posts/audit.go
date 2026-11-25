@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	sharedIPThreshold = 2                // other voters on the same IP hash
+	sharedIPThreshold = 1                // at least one other voter on the same IP hash
 	newGuestWindow    = 10 * time.Minute // identity created this soon before voting
 )
 

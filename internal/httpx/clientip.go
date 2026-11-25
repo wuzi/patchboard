@@ -18,7 +18,11 @@ func ClientIP(r *http.Request, trusted []netip.Prefix) netip.Addr {
 	if !isTrusted(remote, trusted) {
 		return remote
 	}
-	hops := strings.Split(r.Header.Get("X-Forwarded-For"), ",")
+	// Join every header line: some proxies add their own line instead of appending to the client's.
+	hops := strings.Split(strings.Join(r.Header.Values("X-Forwarded-For"), ","), ",")
+	if len(hops) == 1 && strings.TrimSpace(hops[0]) == "" {
+		return remote
+	}
 	for i := len(hops) - 1; i >= 0; i-- {
 		a, err := netip.ParseAddr(strings.TrimSpace(hops[i]))
 		if err != nil {

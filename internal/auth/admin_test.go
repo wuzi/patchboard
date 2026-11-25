@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -179,4 +180,40 @@ func TestLogin_SuccessDoesNotCountTowardLimit(t *testing.T) {
 	for i := 0; i < 12; i++ {
 		login(app.Client(t).WithIP("203.0.113.90"), "wuzi", "correct-horse-1").Want(t, 200)
 	}
+}
+
+func TestLogin_ConcurrentAttemptsAreLimited(t *testing.T) {
+	app := testutil.New(t)
+	createAdmin(t, app, "wuzi", "correct-horse-1")
+	const n = 40
+	codes := make(chan int, n)
+	var wg sync.WaitGroup
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			codes <- login(app.Client(t).WithIP("203.0.113.91"), "wuzi", "wrong-password").Code
+		}()
+	}
+	wg.Wait()
+	close(codes)
+	unauthorized := 0
+	for c := range codes {
+		if c == 401 {
+			unauthorized++
+		}
+	}
+	if unauthorized > 5 {
+		t.Fatalf("%d of %d concurrent wrong logins were evaluated; the limit is 5", unauthorized, n)
+	}
+}
+
+func TestUpdateAdminMe_PasswordChangeSignsOutOtherSessions(t *testing.T) {
+	app := testutil.New(t)
+	a := app.AdminClient(t, "wuzi")
+	b := app.Client(t)
+	login(b, "wuzi", testutil.AdminPassword).Want(t, 200)
+	a.Do("PATCH", "/api/admin/me", map[string]string{"currentPassword": testutil.AdminPassword, "newPassword": "brand-new-pass"}).Want(t, 200)
+	a.Do("GET", "/api/admin/team", nil).Want(t, 200)
+	b.Do("GET", "/api/admin/team", nil).Want(t, 401)
 }

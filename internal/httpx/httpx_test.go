@@ -142,3 +142,15 @@ func TestLimiter_ExceededDoesNotRecord(t *testing.T) {
 		t.Fatalf("over=%v retry=%v", over, retry)
 	}
 }
+
+func TestClientIP_MultipleForwardedHeaders(t *testing.T) {
+	// A proxy that adds its own X-Forwarded-For line (HAProxy "option forwardfor") must not let
+	// the client's own first line win.
+	r := httptest.NewRequest("GET", "/", nil)
+	r.RemoteAddr = "127.0.0.1:1"
+	r.Header.Add("X-Forwarded-For", "6.6.6.6")
+	r.Header.Add("X-Forwarded-For", "203.0.113.9")
+	if got := httpx.ClientIP(r, []netip.Prefix{netip.MustParsePrefix("127.0.0.0/8")}); got.String() != "203.0.113.9" {
+		t.Fatalf("ClientIP = %s, want 203.0.113.9", got)
+	}
+}

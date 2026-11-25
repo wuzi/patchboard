@@ -311,6 +311,11 @@ func (s *Service) editable(ctx context.Context, id int64, viewer *auth.Actor) (p
 		return p, err
 	}
 	if canEdit(p, viewer, def) {
+		if !viewer.IsAdmin() && viewer.Guest != nil {
+			if err := s.d.Auth.CheckNotBanned(ctx, viewer.Guest.ID, viewer.Info.IPHash); err != nil {
+				return p, err
+			}
+		}
 		return p, nil
 	}
 	if isAuthor(p, viewer) {

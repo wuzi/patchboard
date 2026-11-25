@@ -38,24 +38,19 @@ func (s *Service) handleLogin(w http.ResponseWriter, r *http.Request) error {
 	}
 	a := ActorFrom(r.Context())
 	username := strings.ToLower(strings.TrimSpace(req.Username))
-	// Only failed attempts count toward the limits, so a team sharing one IP can still sign in.
-	for _, c := range []struct {
-		rule httpx.Rule
-		key  string
-	}{{httpx.RuleLoginIP, a.Info.IPHash}, {httpx.RuleLoginUser, username}} {
-		if over, retry := s.lim.Exceeded(c.rule, c.key); over {
-			return httpx.RateLimited(retry)
-		}
+	// Every attempt is recorded before the (expensive) password check, so concurrent requests
+	// cannot slip past the limit; a successful login is refunded so a team sharing one IP is not locked out.
+	if ok, retry := s.lim.Allow(httpx.RuleLoginIP, a.Info.IPHash); !ok {
+		return httpx.RateLimited(retry)
 	}
-	failed := func() error {
-		s.lim.Allow(httpx.RuleLoginIP, a.Info.IPHash)
-		s.lim.Allow(httpx.RuleLoginUser, username)
-		return invalidCredentials()
+	if ok, retry := s.lim.Allow(httpx.RuleLoginUser, username); !ok {
+		s.lim.Refund(httpx.RuleLoginIP, a.Info.IPHash)
+		return httpx.RateLimited(retry)
 	}
 	row, err := s.q.GetAdminByUsername(r.Context(), username)
 	if isNoRows(err) {
 		VerifyPassword(dummyHash, req.Password)
-		return failed()
+		return invalidCredentials()
 	} else if err != nil {
 		return err
 	}
@@ -64,8 +59,10 @@ func (s *Service) handleLogin(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if !ok || row.DisabledAt.Valid {
-		return failed()
+		return invalidCredentials()
 	}
+	s.lim.Refund(httpx.RuleLoginIP, a.Info.IPHash)
+	s.lim.Refund(httpx.RuleLoginUser, username)
 	if err := s.startSession(r.Context(), w, s.q, row.ID); err != nil {
 		return err
 	}
@@ -243,6 +240,13 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		if err := s.q.SetAdminPassword(ctx, gen.SetAdminPasswordParams{PasswordHash: hash, ID: a.Admin.ID}); err != nil {
+			return err
+		}
+		current := []byte{}
+		if ck, err := r.Cookie(adminCookie); err == nil {
+			current = hashToken(ck.Value)
+		}
+		if err := s.q.DeleteOtherSessions(ctx, gen.DeleteOtherSessionsParams{AdminID: a.Admin.ID, TokenHash: current}); err != nil {
 			return err
 		}
 	}

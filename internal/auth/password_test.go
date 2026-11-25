@@ -2,6 +2,7 @@ package auth_test
 
 import (
 	"strings"
+	"sync"
 	"testing"
 
 	"patchboard/internal/auth"
@@ -24,5 +25,19 @@ func TestPassword_RoundTrip(t *testing.T) {
 	h2, _ := auth.HashPassword("correct-horse-1")
 	if h2 == h {
 		t.Fatal("hashes must be salted")
+	}
+}
+
+func TestPassword_ArgonConcurrencyIsCapped(t *testing.T) {
+	h, _ := auth.HashPassword("correct-horse-1")
+	auth.ResetArgonPeak()
+	var wg sync.WaitGroup
+	for i := 0; i < 16; i++ {
+		wg.Add(1)
+		go func() { defer wg.Done(); auth.VerifyPassword(h, "wrong") }()
+	}
+	wg.Wait()
+	if p := auth.ArgonPeak(); p > 4 {
+		t.Fatalf("%d argon2 computations ran at once; cap is 4", p)
 	}
 }

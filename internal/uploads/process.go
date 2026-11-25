@@ -21,6 +21,10 @@ const (
 	jpegQ     = 85
 )
 
+// decodeSlots caps concurrent decodes: a 40 MP image can need hundreds of MB while decoding,
+// so uploads from many clients must queue rather than exhaust memory.
+var decodeSlots = make(chan struct{}, 2)
+
 var (
 	ErrNotImage      = errors.New("not a supported image")
 	ErrTooManyPixels = errors.New("image has too many pixels")
@@ -43,6 +47,8 @@ func Process(r io.Reader) (data []byte, ext string, w, h int, err error) {
 	if int64(cfg.Width)*int64(cfg.Height) > maxPixels {
 		return nil, "", 0, 0, ErrTooManyPixels
 	}
+	decodeSlots <- struct{}{}
+	defer func() { <-decodeSlots }()
 	src, _, err := image.Decode(bytes.NewReader(raw))
 	if err != nil {
 		return nil, "", 0, 0, ErrNotImage

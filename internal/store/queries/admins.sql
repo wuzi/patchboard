@@ -41,3 +41,6 @@ SELECT * FROM admin_invites WHERE token_hash = ?;
 
 -- name: UseInvite :exec
 UPDATE admin_invites SET used_at = ?, used_by = ? WHERE token_hash = ?;
+
+-- name: DeleteOtherSessions :exec
+DELETE FROM admin_sessions WHERE admin_id = ? AND token_hash <> ?;

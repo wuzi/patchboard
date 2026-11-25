@@ -61,6 +61,20 @@ func (q *Queries) DeleteAdminSessions(ctx context.Context, adminID int64) error 
 	return err
 }
 
+const deleteOtherSessions = `-- name: DeleteOtherSessions :exec
+DELETE FROM admin_sessions WHERE admin_id = ? AND token_hash <> ?
+`
+
+type DeleteOtherSessionsParams struct {
+	AdminID   int64
+	TokenHash []byte
+}
+
+func (q *Queries) DeleteOtherSessions(ctx context.Context, arg DeleteOtherSessionsParams) error {
+	_, err := q.db.ExecContext(ctx, deleteOtherSessions, arg.AdminID, arg.TokenHash)
+	return err
+}
+
 const deleteSession = `-- name: DeleteSession :exec
 DELETE FROM admin_sessions WHERE token_hash = ?
 `

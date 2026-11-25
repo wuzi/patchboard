@@ -263,6 +263,11 @@ func (s *Service) loadEditable(r *http.Request) (row, error) {
 	if !canEdit(row(c), viewer) {
 		return row{}, httpx.ErrForbidden
 	}
+	if !viewer.IsAdmin() && viewer.Guest != nil {
+		if err := s.auth.CheckNotBanned(ctx, viewer.Guest.ID, viewer.Info.IPHash); err != nil {
+			return row{}, err
+		}
+	}
 	return row(c), nil
 }
 
