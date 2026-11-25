@@ -39,6 +39,7 @@ func New(d Deps) (http.Handler, error) {
 	mux := http.NewServeMux()
 	authSvc.Register(mux)
 	authSvc.RegisterAdmin(mux)
+	authSvc.RegisterBans(mux)
 	boardSvc := board.NewService(d.DB)
 	boardSvc.Register(mux, authSvc.RequireAdmin)
 	uploadsSvc := uploads.NewService(d.DB, d.Clock, authSvc, boardSvc, d.Cfg.DataDir)

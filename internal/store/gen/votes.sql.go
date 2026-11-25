@@ -63,6 +63,52 @@ func (q *Queries) InsertVote(ctx context.Context, arg InsertVoteParams) error {
 	return err
 }
 
+const listPostVotes = `-- name: ListPostVotes :many
+SELECT v.guest_id, g.name, g.created_at AS guest_created_at, v.ip_hash, v.created_at,
+  (SELECT count(*) FROM votes o WHERE o.post_id = v.post_id AND o.ip_hash = v.ip_hash AND o.guest_id <> v.guest_id) AS same_ip
+FROM votes v JOIN guests g ON g.id = v.guest_id
+WHERE v.post_id = ? ORDER BY v.created_at DESC, v.guest_id
+`
+
+type ListPostVotesRow struct {
+	GuestID        string
+	Name           sql.NullString
+	GuestCreatedAt int64
+	IpHash         string
+	CreatedAt      int64
+	SameIp         int64
+}
+
+func (q *Queries) ListPostVotes(ctx context.Context, postID int64) ([]ListPostVotesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPostVotes, postID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPostVotesRow{}
+	for rows.Next() {
+		var i ListPostVotesRow
+		if err := rows.Scan(
+			&i.GuestID,
+			&i.Name,
+			&i.GuestCreatedAt,
+			&i.IpHash,
+			&i.CreatedAt,
+			&i.SameIp,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const recountVotes = `-- name: RecountVotes :one
 UPDATE posts SET vote_count = (SELECT count(*) FROM votes WHERE votes.post_id = posts.id)
 WHERE posts.id = ? RETURNING vote_count

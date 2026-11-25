@@ -26,6 +26,8 @@ func (s *Service) Register(mux *http.ServeMux, requireAdmin func(http.Handler) h
 	mux.Handle("POST /api/admin/posts/{id}/lock", admin(s.handleLock))
 	mux.Handle("POST /api/admin/posts/{id}/restore", admin(s.handleRestore))
 	mux.Handle("POST /api/admin/posts/{id}/merge", admin(s.handleMerge))
+	mux.Handle("GET /api/admin/posts/{id}/votes", admin(s.handleVoteAudit))
+	mux.Handle("DELETE /api/admin/posts/{id}/votes/{guestId}", admin(s.handleRemoveVote))
 }
 
 func postID(r *http.Request) (int64, error) {

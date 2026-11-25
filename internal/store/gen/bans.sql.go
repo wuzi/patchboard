@@ -7,6 +7,7 @@ package gen
 
 import (
 	"context"
+	"database/sql"
 )
 
 const countBansFor = `-- name: CountBansFor :one
@@ -25,4 +26,118 @@ func (q *Queries) CountBansFor(ctx context.Context, arg CountBansForParams) (int
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const deleteBan = `-- name: DeleteBan :exec
+DELETE FROM bans WHERE id = ?
+`
+
+func (q *Queries) DeleteBan(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, deleteBan, id)
+	return err
+}
+
+const getBan = `-- name: GetBan :one
+SELECT id, guest_id, ip_hash, reason, created_by, created_at FROM bans WHERE id = ?
+`
+
+func (q *Queries) GetBan(ctx context.Context, id int64) (Ban, error) {
+	row := q.db.QueryRowContext(ctx, getBan, id)
+	var i Ban
+	err := row.Scan(
+		&i.ID,
+		&i.GuestID,
+		&i.IpHash,
+		&i.Reason,
+		&i.CreatedBy,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getGuest = `-- name: GetGuest :one
+SELECT id, token_hash, name, created_at, created_ip_hash, last_ip_hash FROM guests WHERE id = ?
+`
+
+func (q *Queries) GetGuest(ctx context.Context, id string) (Guest, error) {
+	row := q.db.QueryRowContext(ctx, getGuest, id)
+	var i Guest
+	err := row.Scan(
+		&i.ID,
+		&i.TokenHash,
+		&i.Name,
+		&i.CreatedAt,
+		&i.CreatedIpHash,
+		&i.LastIpHash,
+	)
+	return i, err
+}
+
+const insertBan = `-- name: InsertBan :one
+INSERT INTO bans (guest_id, ip_hash, reason, created_by, created_at) VALUES (?, ?, ?, ?, ?) RETURNING id
+`
+
+type InsertBanParams struct {
+	GuestID   sql.NullString
+	IpHash    sql.NullString
+	Reason    string
+	CreatedBy int64
+	CreatedAt int64
+}
+
+func (q *Queries) InsertBan(ctx context.Context, arg InsertBanParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, insertBan,
+		arg.GuestID,
+		arg.IpHash,
+		arg.Reason,
+		arg.CreatedBy,
+		arg.CreatedAt,
+	)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
+const listBans = `-- name: ListBans :many
+SELECT b.id, b.guest_id, g.name AS guest_name, b.ip_hash, b.reason, b.created_at
+FROM bans b LEFT JOIN guests g ON g.id = b.guest_id ORDER BY b.created_at DESC, b.id DESC
+`
+
+type ListBansRow struct {
+	ID        int64
+	GuestID   sql.NullString
+	GuestName sql.NullString
+	IpHash    sql.NullString
+	Reason    string
+	CreatedAt int64
+}
+
+func (q *Queries) ListBans(ctx context.Context) ([]ListBansRow, error) {
+	rows, err := q.db.QueryContext(ctx, listBans)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBansRow{}
+	for rows.Next() {
+		var i ListBansRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.GuestID,
+			&i.GuestName,
+			&i.IpHash,
+			&i.Reason,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
