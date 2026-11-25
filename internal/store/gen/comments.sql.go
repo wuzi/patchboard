@@ -262,6 +262,15 @@ func (q *Queries) RecountLikes(ctx context.Context, id int64) (int64, error) {
 	return like_count, err
 }
 
+const restoreComment = `-- name: RestoreComment :exec
+UPDATE comments SET deleted_at = NULL, deleted_by_admin_id = NULL WHERE id = ?
+`
+
+func (q *Queries) RestoreComment(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, restoreComment, id)
+	return err
+}
+
 const softDeleteComment = `-- name: SoftDeleteComment :exec
 UPDATE comments SET deleted_at = ?, deleted_by_admin_id = ? WHERE id = ?
 `
@@ -275,6 +284,51 @@ type SoftDeleteCommentParams struct {
 func (q *Queries) SoftDeleteComment(ctx context.Context, arg SoftDeleteCommentParams) error {
 	_, err := q.db.ExecContext(ctx, softDeleteComment, arg.DeletedAt, arg.DeletedByAdminID, arg.ID)
 	return err
+}
+
+const trashComments = `-- name: TrashComments :many
+SELECT c.id, c.post_id, p.title AS post_title, c.body_md, c.deleted_at, c.deleted_by_admin_id
+FROM comments c JOIN posts p ON p.id = c.post_id
+WHERE c.deleted_at IS NOT NULL ORDER BY c.deleted_at DESC, c.id DESC LIMIT ?
+`
+
+type TrashCommentsRow struct {
+	ID               int64
+	PostID           int64
+	PostTitle        string
+	BodyMd           string
+	DeletedAt        sql.NullInt64
+	DeletedByAdminID sql.NullInt64
+}
+
+func (q *Queries) TrashComments(ctx context.Context, limit int64) ([]TrashCommentsRow, error) {
+	rows, err := q.db.QueryContext(ctx, trashComments, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []TrashCommentsRow{}
+	for rows.Next() {
+		var i TrashCommentsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PostID,
+			&i.PostTitle,
+			&i.BodyMd,
+			&i.DeletedAt,
+			&i.DeletedByAdminID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const updateCommentBody = `-- name: UpdateCommentBody :exec

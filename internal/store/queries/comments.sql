@@ -50,3 +50,11 @@ DELETE FROM comment_likes WHERE comment_id = ? AND guest_id = ?;
 -- name: RecountLikes :one
 UPDATE comments SET like_count = (SELECT count(*) FROM comment_likes WHERE comment_likes.comment_id = comments.id)
 WHERE comments.id = ? RETURNING like_count;
+
+-- name: RestoreComment :exec
+UPDATE comments SET deleted_at = NULL, deleted_by_admin_id = NULL WHERE id = ?;
+
+-- name: TrashComments :many
+SELECT c.id, c.post_id, p.title AS post_title, c.body_md, c.deleted_at, c.deleted_by_admin_id
+FROM comments c JOIN posts p ON p.id = c.post_id
+WHERE c.deleted_at IS NOT NULL ORDER BY c.deleted_at DESC, c.id DESC LIMIT ?;

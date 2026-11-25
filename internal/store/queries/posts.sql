@@ -42,3 +42,35 @@ UPDATE posts SET status_id = ?, updated_at = ? WHERE id = ?;
 
 -- name: SetPostResponse :exec
 UPDATE posts SET response_md = ?, response_html = ?, response_admin_id = ?, response_at = ? WHERE id = ?;
+
+-- name: ApprovePost :exec
+UPDATE posts SET pending = 0 WHERE id = ?;
+
+-- name: SetPinned :exec
+UPDATE posts SET pinned_at = ? WHERE id = ?;
+
+-- name: SetLocked :exec
+UPDATE posts SET comments_locked = ? WHERE id = ?;
+
+-- name: RestorePost :exec
+UPDATE posts SET deleted_at = NULL, deleted_by_admin_id = NULL WHERE id = ?;
+
+-- name: TrashPosts :many
+SELECT id, slug, title, deleted_at, deleted_by_admin_id FROM posts
+WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC, id DESC LIMIT ?;
+
+-- name: MoveVotes :exec
+INSERT OR IGNORE INTO votes (post_id, guest_id, ip_hash, created_at)
+SELECT CAST(sqlc.arg('into_id') AS INTEGER), v.guest_id, v.ip_hash, v.created_at FROM votes v WHERE v.post_id = sqlc.arg('from_id');
+
+-- name: DeletePostVotes :exec
+DELETE FROM votes WHERE post_id = ?;
+
+-- name: MoveComments :exec
+UPDATE comments SET post_id = sqlc.arg('into_id') WHERE post_id = sqlc.arg('from_id');
+
+-- name: SetMergedInto :exec
+UPDATE posts SET merged_into_id = sqlc.arg('into_id') WHERE id = sqlc.arg('from_id');
+
+-- name: RepointMerged :exec
+UPDATE posts SET merged_into_id = sqlc.arg('into_id') WHERE merged_into_id = sqlc.arg('from_id');

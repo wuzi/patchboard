@@ -56,7 +56,8 @@ func New(d Deps) (http.Handler, error) {
 	})
 	postsSvc.Register(mux, authSvc.RequireAdmin)
 	commentsSvc = comments.NewService(d.DB, d.Clock, authSvc, postsSvc)
-	commentsSvc.Register(mux)
+	commentsSvc.Register(mux, authSvc.RequireAdmin)
+	mux.Handle("GET /api/admin/trash", authSvc.RequireAdmin(trashHandler(postsSvc, commentsSvc)))
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		if err := d.DB.PingContext(r.Context()); err != nil {
 			http.Error(w, "db unavailable", http.StatusServiceUnavailable)

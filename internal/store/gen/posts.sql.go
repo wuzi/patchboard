@@ -10,6 +10,15 @@ import (
 	"database/sql"
 )
 
+const approvePost = `-- name: ApprovePost :exec
+UPDATE posts SET pending = 0 WHERE id = ?
+`
+
+func (q *Queries) ApprovePost(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, approvePost, id)
+	return err
+}
+
 const countVotesSince = `-- name: CountVotesSince :one
 SELECT count(*) FROM votes WHERE post_id = ? AND created_at >= ?
 `
@@ -24,6 +33,15 @@ func (q *Queries) CountVotesSince(ctx context.Context, arg CountVotesSinceParams
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const deletePostVotes = `-- name: DeletePostVotes :exec
+DELETE FROM votes WHERE post_id = ?
+`
+
+func (q *Queries) DeletePostVotes(ctx context.Context, postID int64) error {
+	_, err := q.db.ExecContext(ctx, deletePostVotes, postID)
+	return err
 }
 
 const getPostFull = `-- name: GetPostFull :one
@@ -182,6 +200,35 @@ func (q *Queries) InsertPost(ctx context.Context, arg InsertPostParams) (int64, 
 	return id, err
 }
 
+const moveComments = `-- name: MoveComments :exec
+UPDATE comments SET post_id = ?1 WHERE post_id = ?2
+`
+
+type MoveCommentsParams struct {
+	IntoID int64
+	FromID int64
+}
+
+func (q *Queries) MoveComments(ctx context.Context, arg MoveCommentsParams) error {
+	_, err := q.db.ExecContext(ctx, moveComments, arg.IntoID, arg.FromID)
+	return err
+}
+
+const moveVotes = `-- name: MoveVotes :exec
+INSERT OR IGNORE INTO votes (post_id, guest_id, ip_hash, created_at)
+SELECT CAST(?1 AS INTEGER), v.guest_id, v.ip_hash, v.created_at FROM votes v WHERE v.post_id = ?2
+`
+
+type MoveVotesParams struct {
+	IntoID int64
+	FromID int64
+}
+
+func (q *Queries) MoveVotes(ctx context.Context, arg MoveVotesParams) error {
+	_, err := q.db.ExecContext(ctx, moveVotes, arg.IntoID, arg.FromID)
+	return err
+}
+
 const recentVoters = `-- name: RecentVoters :many
 SELECT v.guest_id, g.name FROM votes v JOIN guests g ON g.id = v.guest_id
 WHERE v.post_id = ? ORDER BY v.created_at DESC, v.guest_id LIMIT 3
@@ -213,6 +260,71 @@ func (q *Queries) RecentVoters(ctx context.Context, postID int64) ([]RecentVoter
 		return nil, err
 	}
 	return items, nil
+}
+
+const repointMerged = `-- name: RepointMerged :exec
+UPDATE posts SET merged_into_id = ?1 WHERE merged_into_id = ?2
+`
+
+type RepointMergedParams struct {
+	IntoID sql.NullInt64
+	FromID sql.NullInt64
+}
+
+func (q *Queries) RepointMerged(ctx context.Context, arg RepointMergedParams) error {
+	_, err := q.db.ExecContext(ctx, repointMerged, arg.IntoID, arg.FromID)
+	return err
+}
+
+const restorePost = `-- name: RestorePost :exec
+UPDATE posts SET deleted_at = NULL, deleted_by_admin_id = NULL WHERE id = ?
+`
+
+func (q *Queries) RestorePost(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, restorePost, id)
+	return err
+}
+
+const setLocked = `-- name: SetLocked :exec
+UPDATE posts SET comments_locked = ? WHERE id = ?
+`
+
+type SetLockedParams struct {
+	CommentsLocked int64
+	ID             int64
+}
+
+func (q *Queries) SetLocked(ctx context.Context, arg SetLockedParams) error {
+	_, err := q.db.ExecContext(ctx, setLocked, arg.CommentsLocked, arg.ID)
+	return err
+}
+
+const setMergedInto = `-- name: SetMergedInto :exec
+UPDATE posts SET merged_into_id = ?1 WHERE id = ?2
+`
+
+type SetMergedIntoParams struct {
+	IntoID sql.NullInt64
+	FromID int64
+}
+
+func (q *Queries) SetMergedInto(ctx context.Context, arg SetMergedIntoParams) error {
+	_, err := q.db.ExecContext(ctx, setMergedInto, arg.IntoID, arg.FromID)
+	return err
+}
+
+const setPinned = `-- name: SetPinned :exec
+UPDATE posts SET pinned_at = ? WHERE id = ?
+`
+
+type SetPinnedParams struct {
+	PinnedAt sql.NullInt64
+	ID       int64
+}
+
+func (q *Queries) SetPinned(ctx context.Context, arg SetPinnedParams) error {
+	_, err := q.db.ExecContext(ctx, setPinned, arg.PinnedAt, arg.ID)
+	return err
 }
 
 const setPostResponse = `-- name: SetPostResponse :exec
@@ -266,6 +378,48 @@ type SoftDeletePostParams struct {
 func (q *Queries) SoftDeletePost(ctx context.Context, arg SoftDeletePostParams) error {
 	_, err := q.db.ExecContext(ctx, softDeletePost, arg.DeletedAt, arg.DeletedByAdminID, arg.ID)
 	return err
+}
+
+const trashPosts = `-- name: TrashPosts :many
+SELECT id, slug, title, deleted_at, deleted_by_admin_id FROM posts
+WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC, id DESC LIMIT ?
+`
+
+type TrashPostsRow struct {
+	ID               int64
+	Slug             string
+	Title            string
+	DeletedAt        sql.NullInt64
+	DeletedByAdminID sql.NullInt64
+}
+
+func (q *Queries) TrashPosts(ctx context.Context, limit int64) ([]TrashPostsRow, error) {
+	rows, err := q.db.QueryContext(ctx, trashPosts, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []TrashPostsRow{}
+	for rows.Next() {
+		var i TrashPostsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Slug,
+			&i.Title,
+			&i.DeletedAt,
+			&i.DeletedByAdminID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const updatePostContent = `-- name: UpdatePostContent :exec

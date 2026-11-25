@@ -8,7 +8,8 @@ import (
 )
 
 // Register adds the comment routes.
-func (s *Service) Register(mux *http.ServeMux) {
+func (s *Service) Register(mux *http.ServeMux, requireAdmin func(http.Handler) http.Handler) {
+	mux.Handle("POST /api/admin/comments/{id}/restore", requireAdmin(httpx.HandlerFunc(s.handleRestore)))
 	mux.Handle("POST /api/posts/{id}/comments", httpx.HandlerFunc(s.handleCreate))
 	mux.Handle("PATCH /api/comments/{id}", httpx.HandlerFunc(s.handleUpdate))
 	mux.Handle("DELETE /api/comments/{id}", httpx.HandlerFunc(s.handleDelete))
