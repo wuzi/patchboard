@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"patchboard/internal/auth"
+	"patchboard/internal/board"
 	"patchboard/internal/clock"
 	"patchboard/internal/config"
 	"patchboard/internal/httpx"
@@ -32,6 +33,8 @@ func New(d Deps) (http.Handler, error) {
 	mux := http.NewServeMux()
 	authSvc.Register(mux)
 	authSvc.RegisterAdmin(mux)
+	boardSvc := board.NewService(d.DB)
+	boardSvc.Register(mux, authSvc.RequireAdmin)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		if err := d.DB.PingContext(r.Context()); err != nil {
 			http.Error(w, "db unavailable", http.StatusServiceUnavailable)

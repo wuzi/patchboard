@@ -260,3 +260,16 @@ func (a *App) AdminClient(t *testing.T, username string) *Client {
 	c.Do("POST", "/api/admin/login", map[string]string{"username": username, "password": AdminPassword}).Want(t, 200)
 	return c
 }
+
+// InsertPost inserts a post directly (authored by a seed admin) and returns its id.
+func InsertPost(t *testing.T, db *sql.DB, title string, statusID int64) int64 {
+	t.Helper()
+	Exec(t, db, `INSERT OR IGNORE INTO admins (id, username, display_name, password_hash, created_at) VALUES (1000, 'seed', 'Seed', 'x', 0)`)
+	res, err := db.Exec(`INSERT INTO posts (slug, title, status_id, author_admin_id, ip_hash, created_at, updated_at)
+		VALUES ('post', ?, ?, 1000, 'seed', 0, 0)`, title, statusID)
+	if err != nil {
+		t.Fatalf("insert post: %v", err)
+	}
+	id, _ := res.LastInsertId()
+	return id
+}

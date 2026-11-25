@@ -7,7 +7,58 @@ package gen
 
 import (
 	"context"
+	"database/sql"
 )
+
+const clearDefaultStatus = `-- name: ClearDefaultStatus :exec
+UPDATE statuses SET is_default = 0 WHERE is_default = 1
+`
+
+func (q *Queries) ClearDefaultStatus(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, clearDefaultStatus)
+	return err
+}
+
+const countStatusUsage = `-- name: CountStatusUsage :one
+SELECT (SELECT count(*) FROM posts WHERE posts.status_id = ?1)
+     + (SELECT count(*) FROM update_posts WHERE update_posts.status_id = ?1)
+`
+
+func (q *Queries) CountStatusUsage(ctx context.Context, id int64) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countStatusUsage, id)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const deleteStatus = `-- name: DeleteStatus :exec
+DELETE FROM statuses WHERE id = ?
+`
+
+func (q *Queries) DeleteStatus(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, deleteStatus, id)
+	return err
+}
+
+const deleteTag = `-- name: DeleteTag :exec
+DELETE FROM tags WHERE id = ?
+`
+
+func (q *Queries) DeleteTag(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, deleteTag, id)
+	return err
+}
+
+const getLogoExt = `-- name: GetLogoExt :one
+SELECT u.ext FROM board_settings s JOIN uploads u ON u.id = s.logo_upload_id WHERE s.id = 1
+`
+
+func (q *Queries) GetLogoExt(ctx context.Context) (string, error) {
+	row := q.db.QueryRowContext(ctx, getLogoExt)
+	var ext string
+	err := row.Scan(&ext)
+	return ext, err
+}
 
 const getSettings = `-- name: GetSettings :one
 SELECT id, title_pt, title_en, description_pt, description_en, team_name, accent_color, logo_upload_id, require_approval, uploads_enabled FROM board_settings WHERE id = 1
@@ -29,4 +80,298 @@ func (q *Queries) GetSettings(ctx context.Context) (BoardSetting, error) {
 		&i.UploadsEnabled,
 	)
 	return i, err
+}
+
+const getStatus = `-- name: GetStatus :one
+SELECT id, name_pt, name_en, color, position, show_on_roadmap, is_default FROM statuses WHERE id = ?
+`
+
+func (q *Queries) GetStatus(ctx context.Context, id int64) (Status, error) {
+	row := q.db.QueryRowContext(ctx, getStatus, id)
+	var i Status
+	err := row.Scan(
+		&i.ID,
+		&i.NamePt,
+		&i.NameEn,
+		&i.Color,
+		&i.Position,
+		&i.ShowOnRoadmap,
+		&i.IsDefault,
+	)
+	return i, err
+}
+
+const getTag = `-- name: GetTag :one
+SELECT id, name_pt, name_en, position FROM tags WHERE id = ?
+`
+
+func (q *Queries) GetTag(ctx context.Context, id int64) (Tag, error) {
+	row := q.db.QueryRowContext(ctx, getTag, id)
+	var i Tag
+	err := row.Scan(
+		&i.ID,
+		&i.NamePt,
+		&i.NameEn,
+		&i.Position,
+	)
+	return i, err
+}
+
+const insertStatus = `-- name: InsertStatus :one
+INSERT INTO statuses (name_pt, name_en, color, position, show_on_roadmap, is_default)
+VALUES (?, ?, ?, ?, ?, 0) RETURNING id, name_pt, name_en, color, position, show_on_roadmap, is_default
+`
+
+type InsertStatusParams struct {
+	NamePt        string
+	NameEn        string
+	Color         string
+	Position      int64
+	ShowOnRoadmap int64
+}
+
+func (q *Queries) InsertStatus(ctx context.Context, arg InsertStatusParams) (Status, error) {
+	row := q.db.QueryRowContext(ctx, insertStatus,
+		arg.NamePt,
+		arg.NameEn,
+		arg.Color,
+		arg.Position,
+		arg.ShowOnRoadmap,
+	)
+	var i Status
+	err := row.Scan(
+		&i.ID,
+		&i.NamePt,
+		&i.NameEn,
+		&i.Color,
+		&i.Position,
+		&i.ShowOnRoadmap,
+		&i.IsDefault,
+	)
+	return i, err
+}
+
+const insertTag = `-- name: InsertTag :one
+INSERT INTO tags (name_pt, name_en, position) VALUES (?, ?, ?) RETURNING id, name_pt, name_en, position
+`
+
+type InsertTagParams struct {
+	NamePt   string
+	NameEn   string
+	Position int64
+}
+
+func (q *Queries) InsertTag(ctx context.Context, arg InsertTagParams) (Tag, error) {
+	row := q.db.QueryRowContext(ctx, insertTag, arg.NamePt, arg.NameEn, arg.Position)
+	var i Tag
+	err := row.Scan(
+		&i.ID,
+		&i.NamePt,
+		&i.NameEn,
+		&i.Position,
+	)
+	return i, err
+}
+
+const listStatuses = `-- name: ListStatuses :many
+SELECT id, name_pt, name_en, color, position, show_on_roadmap, is_default FROM statuses ORDER BY position, id
+`
+
+func (q *Queries) ListStatuses(ctx context.Context) ([]Status, error) {
+	rows, err := q.db.QueryContext(ctx, listStatuses)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Status{}
+	for rows.Next() {
+		var i Status
+		if err := rows.Scan(
+			&i.ID,
+			&i.NamePt,
+			&i.NameEn,
+			&i.Color,
+			&i.Position,
+			&i.ShowOnRoadmap,
+			&i.IsDefault,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTags = `-- name: ListTags :many
+SELECT id, name_pt, name_en, position FROM tags ORDER BY position, id
+`
+
+func (q *Queries) ListTags(ctx context.Context) ([]Tag, error) {
+	rows, err := q.db.QueryContext(ctx, listTags)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Tag{}
+	for rows.Next() {
+		var i Tag
+		if err := rows.Scan(
+			&i.ID,
+			&i.NamePt,
+			&i.NameEn,
+			&i.Position,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const movePostsStatus = `-- name: MovePostsStatus :exec
+UPDATE posts SET status_id = ?1 WHERE status_id = ?2
+`
+
+type MovePostsStatusParams struct {
+	ToID   int64
+	FromID int64
+}
+
+func (q *Queries) MovePostsStatus(ctx context.Context, arg MovePostsStatusParams) error {
+	_, err := q.db.ExecContext(ctx, movePostsStatus, arg.ToID, arg.FromID)
+	return err
+}
+
+const moveUpdateLinksStatus = `-- name: MoveUpdateLinksStatus :exec
+UPDATE update_posts SET status_id = ?1 WHERE status_id = ?2
+`
+
+type MoveUpdateLinksStatusParams struct {
+	ToID   int64
+	FromID int64
+}
+
+func (q *Queries) MoveUpdateLinksStatus(ctx context.Context, arg MoveUpdateLinksStatusParams) error {
+	_, err := q.db.ExecContext(ctx, moveUpdateLinksStatus, arg.ToID, arg.FromID)
+	return err
+}
+
+const setDefaultStatus = `-- name: SetDefaultStatus :exec
+UPDATE statuses SET is_default = 1 WHERE id = ?
+`
+
+func (q *Queries) SetDefaultStatus(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, setDefaultStatus, id)
+	return err
+}
+
+const setStatusPosition = `-- name: SetStatusPosition :exec
+UPDATE statuses SET position = ? WHERE id = ?
+`
+
+type SetStatusPositionParams struct {
+	Position int64
+	ID       int64
+}
+
+func (q *Queries) SetStatusPosition(ctx context.Context, arg SetStatusPositionParams) error {
+	_, err := q.db.ExecContext(ctx, setStatusPosition, arg.Position, arg.ID)
+	return err
+}
+
+const setTagPosition = `-- name: SetTagPosition :exec
+UPDATE tags SET position = ? WHERE id = ?
+`
+
+type SetTagPositionParams struct {
+	Position int64
+	ID       int64
+}
+
+func (q *Queries) SetTagPosition(ctx context.Context, arg SetTagPositionParams) error {
+	_, err := q.db.ExecContext(ctx, setTagPosition, arg.Position, arg.ID)
+	return err
+}
+
+const updateSettings = `-- name: UpdateSettings :exec
+UPDATE board_settings SET title_pt = ?, title_en = ?, description_pt = ?, description_en = ?,
+  team_name = ?, accent_color = ?, logo_upload_id = ?, require_approval = ?, uploads_enabled = ?
+WHERE id = 1
+`
+
+type UpdateSettingsParams struct {
+	TitlePt         string
+	TitleEn         string
+	DescriptionPt   string
+	DescriptionEn   string
+	TeamName        string
+	AccentColor     string
+	LogoUploadID    sql.NullString
+	RequireApproval int64
+	UploadsEnabled  int64
+}
+
+func (q *Queries) UpdateSettings(ctx context.Context, arg UpdateSettingsParams) error {
+	_, err := q.db.ExecContext(ctx, updateSettings,
+		arg.TitlePt,
+		arg.TitleEn,
+		arg.DescriptionPt,
+		arg.DescriptionEn,
+		arg.TeamName,
+		arg.AccentColor,
+		arg.LogoUploadID,
+		arg.RequireApproval,
+		arg.UploadsEnabled,
+	)
+	return err
+}
+
+const updateStatus = `-- name: UpdateStatus :exec
+UPDATE statuses SET name_pt = ?, name_en = ?, color = ?, show_on_roadmap = ? WHERE id = ?
+`
+
+type UpdateStatusParams struct {
+	NamePt        string
+	NameEn        string
+	Color         string
+	ShowOnRoadmap int64
+	ID            int64
+}
+
+func (q *Queries) UpdateStatus(ctx context.Context, arg UpdateStatusParams) error {
+	_, err := q.db.ExecContext(ctx, updateStatus,
+		arg.NamePt,
+		arg.NameEn,
+		arg.Color,
+		arg.ShowOnRoadmap,
+		arg.ID,
+	)
+	return err
+}
+
+const updateTag = `-- name: UpdateTag :exec
+UPDATE tags SET name_pt = ?, name_en = ? WHERE id = ?
+`
+
+type UpdateTagParams struct {
+	NamePt string
+	NameEn string
+	ID     int64
+}
+
+func (q *Queries) UpdateTag(ctx context.Context, arg UpdateTagParams) error {
+	_, err := q.db.ExecContext(ctx, updateTag, arg.NamePt, arg.NameEn, arg.ID)
+	return err
 }
