@@ -170,6 +170,10 @@ export const en: Record<TKey, string> = {
   'admin.banReason': 'Reason (optional)',
   'admin.flag_shared_ip': 'Shared IP',
   'admin.flag_new_guest': 'New identity',
+  'admin.dragHandle': 'Move to another status',
+  'admin.respond': 'Respond as the team',
+  'admin.deleteImage': 'Delete image',
+  'admin.mergeInto': 'Merge into this',
   'admin.searchPosts': 'Search posts…',
 
   'status.label': 'Status',

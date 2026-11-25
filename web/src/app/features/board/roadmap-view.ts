@@ -1,4 +1,4 @@
-import { CdkDrag, CdkDragDrop, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
+import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, output, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
@@ -20,7 +20,7 @@ type Column = { status: Status; total: number; posts: Card[] };
 
 @Component({
   selector: 'pb-roadmap-view',
-  imports: [CdkDropListGroup, CdkDropList, CdkDrag, PostCard, Icon],
+  imports: [CdkDropListGroup, CdkDropList, CdkDrag, CdkDragHandle, PostCard, Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="scroller">
@@ -35,7 +35,12 @@ type Column = { status: Status; total: number; posts: Card[] };
             <div class="cards" cdkDropList [id]="'col-' + col.status.id" [cdkDropListData]="col"
               [cdkDropListDisabled]="!me.isAdmin()" (cdkDropListDropped)="drop($event)">
               @for (p of col.posts; track p.id) {
-                <div class="drag" cdkDrag [cdkDragData]="p" [cdkDragDisabled]="!me.isAdmin()"><pb-post-card [post]="p" /></div>
+                <div class="drag" cdkDrag [cdkDragData]="p" [cdkDragDisabled]="!me.isAdmin()">
+                  <pb-post-card [post]="p" />
+                  @if (me.isAdmin()) {
+                    <button type="button" class="handle" cdkDragHandle [attr.aria-label]="i18n.t('admin.dragHandle')" [attr.title]="i18n.t('admin.dragHandle')"><pb-icon name="grip" /></button>
+                  }
+                </div>
               } @empty {
                 <p class="empty">{{ i18n.t('common.empty') }}</p>
               }
@@ -59,7 +64,10 @@ type Column = { status: Status; total: number; posts: Card[] };
     .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
     .count { margin-left: auto; color: var(--pb-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
     .cards { display: flex; flex-direction: column; gap: 10px; min-height: 40px; }
-    .drag { border-radius: var(--pb-radius); }
+    .drag { position: relative; border-radius: var(--pb-radius); }
+    .handle { position: absolute; top: 8px; right: 8px; z-index: 2; display: inline-flex; padding: 4px; border: 0; border-radius: 8px;
+      background: var(--pb-surface); color: var(--pb-muted); cursor: grab; touch-action: none; }
+    .handle:hover { background: var(--pb-hover); color: var(--pb-text); }
     .cdk-drag-preview { box-shadow: var(--pb-dialog-shadow); border-radius: var(--pb-radius); }
     .cdk-drag-placeholder { opacity: .35; }
     .cdk-drag-animating, .cards.cdk-drop-list-dragging .drag:not(.cdk-drag-placeholder) { transition: transform 180ms ease; }

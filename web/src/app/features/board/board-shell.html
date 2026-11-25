@@ -24,16 +24,16 @@
             <div class="popover" role="group" [attr.aria-label]="i18n.t('nav.filter')">
               @if (background() === 'list') {
                 <label class="field"><span>{{ i18n.t('status.label') }}</span>
-                  <select class="input" [value]="query().status ?? ''" (change)="setFilter('status', $any($event.target).value)">
+                  <select class="input" (change)="setFilter('status', $any($event.target).value)">
                     <option value="">{{ i18n.t('nav.allStatuses') }}</option>
-                    @for (s of store.statuses(); track s.id) {<option [value]="s.id">{{ i18n.name(s.name) }}</option>}
+                    @for (s of store.statuses(); track s.id) {<option [value]="s.id" [selected]="s.id === query().status">{{ i18n.name(s.name) }}</option>}
                   </select>
                 </label>
               }
               <label class="field"><span>{{ i18n.t('post.tagLabel') }}</span>
-                <select class="input" [value]="query().tag ?? ''" (change)="setFilter('tag', $any($event.target).value)">
+                <select class="input" (change)="setFilter('tag', $any($event.target).value)">
                   <option value="">{{ i18n.t('nav.allTags') }}</option>
-                  @for (t of store.tags(); track t.id) {<option [value]="t.id">{{ i18n.name(t.name) }}</option>}
+                  @for (t of store.tags(); track t.id) {<option [value]="t.id" [selected]="t.id === query().tag">{{ i18n.name(t.name) }}</option>}
                 </select>
               </label>
               @if (hasFilters()) {<button type="button" class="btn ghost" (click)="clearFilters()">{{ i18n.t('nav.clearFilters') }}</button>}
@@ -52,7 +52,7 @@
 
 @switch (background()) {
   @case ('list') {<section class="body"><pb-list-view /></section>}
-  @case ('roadmap') {<section class="body wide"><pb-roadmap-view /></section>}
+  @case ('roadmap') {<section class="body wide"><pb-roadmap-view (moved)="drop.set($event)" /></section>}
   @case ('updates') {<section class="body"><pb-updates-view /></section>}
 }
 
@@ -62,4 +62,8 @@
 
 @if (events.newPostOpen()) {
   <pb-new-post-dialog (closed)="events.newPostOpen.set(false)" />
+}
+
+@if (drop(); as d) {
+  <pb-status-change-dialog [post]="d.post" [toStatusId]="d.toStatusId" (done)="dropDone()" (cancelled)="dropCancelled(d)" />
 }

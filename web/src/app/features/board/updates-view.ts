@@ -7,13 +7,19 @@ import { BoardEvents } from '../../core/board-events';
 import { BoardStore } from '../../core/board.store';
 import { I18n } from '../../core/i18n/i18n';
 import { postUrl } from '../../core/route-utils';
+import { MeStore } from '../../core/me.store';
 import { Toast } from '../../core/toast';
+import { Icon } from '../../shared/icon';
+import { UpdateEditorDialog } from '../admin/update-editor-dialog';
 
 @Component({
   selector: 'pb-updates-view',
-  imports: [RouterLink],
+  imports: [RouterLink, Icon, UpdateEditorDialog],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
+    @if (me.isAdmin()) {
+      <div class="admin-row"><button type="button" class="btn primary" (click)="editing.set('new')"><pb-icon name="plus" />{{ i18n.t('updates.new') }}</button></div>
+    }
     @if (loading() && items().length === 0) {
       <p class="empty">{{ i18n.t('common.loading') }}</p>
     } @else if (items().length === 0) {
@@ -36,9 +42,18 @@ import { Toast } from '../../core/toast';
               }
             </div>
           }
+          @if (me.isAdmin()) {
+            <div class="admin-acts">
+              <button type="button" class="btn ghost" (click)="editing.set(u)"><pb-icon name="edit" />{{ i18n.t('common.edit') }}</button>
+              <button type="button" class="btn ghost danger" (click)="remove(u)"><pb-icon name="trash" />{{ i18n.t('common.delete') }}</button>
+            </div>
+          }
         </article>
       }
     </div>
+    @if (editing(); as e) {
+      <pb-update-editor-dialog [update]="e === 'new' ? null : e" (closed)="editorClosed($event)" />
+    }
     @if (next() !== null) {
       <div class="more"><button type="button" class="btn" (click)="load(next()!)">{{ i18n.t('common.loadMore') }}</button></div>
     }
@@ -57,6 +72,8 @@ import { Toast } from '../../core/toast';
       color: var(--pb-muted); font-size: 13px; }
     .dot { width: 8px; height: 8px; border-radius: 50%; }
     .more { display: flex; justify-content: center; margin-top: 16px; }
+    .admin-row { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+    .admin-acts { display: flex; gap: 4px; margin: 14px 0 0 -8px; }
   `,
 })
 export class UpdatesView {
@@ -69,12 +86,29 @@ export class UpdatesView {
   protected readonly next = signal<number | null>(null);
   protected readonly loading = signal(true);
   protected readonly url = postUrl;
+  protected readonly me = inject(MeStore);
+  protected readonly editing = signal<UpdateItem | 'new' | null>(null);
 
   constructor() {
     effect(() => {
       this.events.revision();
       untracked(() => this.load(0));
     });
+  }
+
+  protected editorClosed(saved: boolean): void {
+    this.editing.set(null);
+    if (saved) this.load(0);
+  }
+
+  protected async remove(u: UpdateItem): Promise<void> {
+    if (!confirm(this.i18n.t('updates.confirmDelete'))) return;
+    try {
+      await firstValueFrom(this.api.deleteUpdate(u.id));
+      this.load(0);
+    } catch (e) {
+      this.toast.error(e);
+    }
   }
 
   async load(offset: number): Promise<void> {

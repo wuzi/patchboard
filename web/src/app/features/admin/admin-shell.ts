@@ -41,5 +41,6 @@ export class AdminShell {
     { path: 'statuses', label: 'admin.navStatuses' },
     { path: 'tags', label: 'admin.navTags' },
     { path: 'team', label: 'admin.navTeam' },
+    { path: 'moderation', label: 'admin.navModeration' },
   ];
 }

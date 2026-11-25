@@ -51,9 +51,9 @@ import { StatusChip } from '../../shared/status-chip';
 
         <div class="cols">
           <label class="field"><span>{{ i18n.t('post.tagLabel') }}</span>
-            <select class="input" [value]="tagId() ?? ''" (change)="tagId.set($any($event.target).value ? +$any($event.target).value : null)">
+            <select class="input" (change)="tagId.set($any($event.target).value ? +$any($event.target).value : null)">
               <option value="">{{ i18n.t('post.noTag') }}</option>
-              @for (t of store.tags(); track t.id) {<option [value]="t.id">{{ i18n.name(t.name) }}</option>}
+              @for (t of store.tags(); track t.id) {<option [value]="t.id" [selected]="t.id === tagId()">{{ i18n.name(t.name) }}</option>}
             </select>
           </label>
           @if (!me.isAdmin()) {

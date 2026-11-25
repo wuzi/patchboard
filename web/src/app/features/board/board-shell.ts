@@ -12,7 +12,8 @@ import { Icon } from '../../shared/icon';
 import { NewPostDialog } from '../post/new-post-dialog';
 import { PostModal } from '../post/post-modal';
 import { boardQuery, ListView } from './list-view';
-import { RoadmapView } from './roadmap-view';
+import { RoadmapView, type RoadmapDrop } from './roadmap-view';
+import { StatusChangeDialog } from '../admin/status-change-dialog';
 import { UpdatesView } from './updates-view';
 import { ProfileMenu } from '../profile/profile-menu';
 
@@ -20,7 +21,7 @@ type View = BoardView | 'post';
 
 @Component({
   selector: 'pb-board-shell',
-  imports: [RouterLink, Icon, ListView, RoadmapView, UpdatesView, ProfileMenu, PostModal, NewPostDialog],
+  imports: [RouterLink, Icon, ListView, RoadmapView, UpdatesView, ProfileMenu, PostModal, NewPostDialog, StatusChangeDialog],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './board-shell.html',
   styleUrl: './board-shell.scss',
@@ -45,6 +46,7 @@ export class BoardShell {
   protected readonly query = boardQuery(this.route);
   protected readonly hasFilters = computed(() => this.query().status !== null || this.query().tag !== null);
 
+  protected readonly drop = signal<RoadmapDrop | null>(null);
   protected readonly searchOpen = signal(false);
   protected readonly filterOpen = signal(false);
   private readonly searchInput = viewChild<ElementRef<HTMLInputElement>>('search');
@@ -87,6 +89,16 @@ export class BoardShell {
       this.nav.lastView.set(v);
       this.nav.lastUrl.set(this.router.url);
     }
+  }
+
+  protected dropDone(): void {
+    this.drop.set(null);
+    this.events.changed();
+  }
+
+  protected dropCancelled(d: RoadmapDrop): void {
+    d.revert();
+    this.drop.set(null);
   }
 
   protected toggleSearch(): void {

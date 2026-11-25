@@ -20,10 +20,11 @@ import { StatusChip } from '../../shared/status-chip';
 import { VoteButton } from '../../shared/vote-button';
 import { CommentForm } from './comment-form';
 import { CommentThread } from './comment-thread';
+import { PostAdminBar } from './post-admin-bar';
 
 @Component({
   selector: 'pb-post-modal',
-  imports: [Avatar, Icon, MarkdownEditor, StatusChip, VoteButton, CommentForm, CommentThread],
+  imports: [Avatar, Icon, MarkdownEditor, StatusChip, VoteButton, CommentForm, CommentThread, PostAdminBar],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './post-modal.html',
   styleUrl: './post-modal.scss',
@@ -134,6 +135,16 @@ export class PostModal {
       await firstValueFrom(this.api.deletePost(p.id));
       this.events.changed();
       this.close();
+    } catch (e) {
+      this.toast.error(e);
+    }
+  }
+
+  protected async deleteImage(id: string): Promise<void> {
+    if (!confirm(this.i18n.t('admin.deleteImage') + '?')) return;
+    try {
+      await firstValueFrom(this.api.deleteUpload(id));
+      this.reload();
     } catch (e) {
       this.toast.error(e);
     }

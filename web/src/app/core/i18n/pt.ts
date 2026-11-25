@@ -168,6 +168,10 @@ export const pt = {
   'admin.banReason': 'Motivo (opcional)',
   'admin.flag_shared_ip': 'IP compartilhado',
   'admin.flag_new_guest': 'Identidade nova',
+  'admin.dragHandle': 'Mover para outro status',
+  'admin.respond': 'Responder como equipe',
+  'admin.deleteImage': 'Excluir imagem',
+  'admin.mergeInto': 'Unir a este',
   'admin.searchPosts': 'Buscar post…',
 
   'status.label': 'Status',

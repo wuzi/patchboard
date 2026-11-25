@@ -4,6 +4,7 @@ import { AdminLogin } from './admin-login';
 import { AdminShell } from './admin-shell';
 import { BoardSettings } from './board-settings';
 import { InviteAccept } from './invite-accept';
+import { ModerationPage } from './moderation-page';
 import { StatusesPage } from './statuses-page';
 import { TagsPage } from './tags-page';
 import { TeamPage } from './team-page';
@@ -21,6 +22,7 @@ export const adminRoutes: Routes = [
       { path: 'statuses', component: StatusesPage },
       { path: 'tags', component: TagsPage },
       { path: 'team', component: TeamPage },
+      { path: 'moderation', component: ModerationPage },
     ],
   },
 ];

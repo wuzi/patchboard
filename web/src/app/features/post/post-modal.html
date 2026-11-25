@@ -29,6 +29,7 @@
         <span class="count"><pb-icon name="comment" />{{ p.commentCount }}</span>
       </div>
 
+      @if (me.isAdmin()) {<pb-post-admin-bar [post]="p" (changed)="reload()" />}
       @if (p.deleted) {<p class="notice">{{ i18n.t('post.deleted') }}</p>}
 
       @if (editing()) {
@@ -44,8 +45,13 @@
       @if (p.images.length) {
         <div class="images">
           @for (img of p.images; track img.id; let i = $index) {
-            <a [href]="img.url" target="_blank" rel="noopener"><img [src]="img.url" [width]="img.width" [height]="img.height"
-              [alt]="i18n.t('post.imageAlt', { n: i + 1 })" loading="lazy" /></a>
+            <div class="img">
+              <a [href]="img.url" target="_blank" rel="noopener"><img [src]="img.url" [width]="img.width" [height]="img.height"
+                [alt]="i18n.t('post.imageAlt', { n: i + 1 })" loading="lazy" /></a>
+              @if (me.isAdmin()) {
+                <button type="button" class="img-del" [attr.aria-label]="i18n.t('admin.deleteImage')" (click)="deleteImage(img.id)"><pb-icon name="trash" /></button>
+              }
+            </div>
           }
         </div>
       }
