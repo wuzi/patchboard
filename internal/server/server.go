@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"net/http"
 
+	"patchboard/internal/auth"
 	"patchboard/internal/clock"
 	"patchboard/internal/config"
 	"patchboard/internal/httpx"
@@ -27,7 +28,9 @@ func New(d Deps) (http.Handler, error) {
 		d.Limiter = httpx.NewLimiter(d.Clock)
 	}
 	hasher := httpx.NewIPHasher(d.Cfg.Secret)
+	authSvc := auth.NewService(d.DB, d.Clock, d.Limiter, d.Cfg)
 	mux := http.NewServeMux()
+	authSvc.Register(mux)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		if err := d.DB.PingContext(r.Context()); err != nil {
 			http.Error(w, "db unavailable", http.StatusServiceUnavailable)
@@ -41,6 +44,7 @@ func New(d Deps) (http.Handler, error) {
 		return httpx.ErrNotFound
 	}))
 	var h http.Handler = mux
+	h = authSvc.Middleware(h)
 	h = httpx.CSRF(h)
 	h = httpx.RequestInfo(d.Cfg.TrustedProxies, hasher)(h)
 	return h, nil
