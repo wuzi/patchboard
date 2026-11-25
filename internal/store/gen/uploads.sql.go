@@ -7,7 +7,41 @@ package gen
 
 import (
 	"context"
+	"database/sql"
 )
+
+const attachUpload = `-- name: AttachUpload :exec
+UPDATE uploads SET post_id = ?, position = ? WHERE id = ?
+`
+
+type AttachUploadParams struct {
+	PostID   sql.NullInt64
+	Position int64
+	ID       string
+}
+
+func (q *Queries) AttachUpload(ctx context.Context, arg AttachUploadParams) error {
+	_, err := q.db.ExecContext(ctx, attachUpload, arg.PostID, arg.Position, arg.ID)
+	return err
+}
+
+const deleteUpload = `-- name: DeleteUpload :exec
+DELETE FROM uploads WHERE id = ?
+`
+
+func (q *Queries) DeleteUpload(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deleteUpload, id)
+	return err
+}
+
+const detachPostUploads = `-- name: DetachPostUploads :exec
+UPDATE uploads SET post_id = NULL, position = 0 WHERE post_id = ?
+`
+
+func (q *Queries) DetachPostUploads(ctx context.Context, postID sql.NullInt64) error {
+	_, err := q.db.ExecContext(ctx, detachPostUploads, postID)
+	return err
+}
 
 const getUpload = `-- name: GetUpload :one
 SELECT id, ext, width, height, bytes, post_id, position, guest_id, admin_id, ip_hash, created_at FROM uploads WHERE id = ?
@@ -30,4 +64,109 @@ func (q *Queries) GetUpload(ctx context.Context, id string) (Upload, error) {
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const insertUpload = `-- name: InsertUpload :exec
+INSERT INTO uploads (id, ext, width, height, bytes, guest_id, admin_id, ip_hash, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+`
+
+type InsertUploadParams struct {
+	ID        string
+	Ext       string
+	Width     int64
+	Height    int64
+	Bytes     int64
+	GuestID   sql.NullString
+	AdminID   sql.NullInt64
+	IpHash    string
+	CreatedAt int64
+}
+
+func (q *Queries) InsertUpload(ctx context.Context, arg InsertUploadParams) error {
+	_, err := q.db.ExecContext(ctx, insertUpload,
+		arg.ID,
+		arg.Ext,
+		arg.Width,
+		arg.Height,
+		arg.Bytes,
+		arg.GuestID,
+		arg.AdminID,
+		arg.IpHash,
+		arg.CreatedAt,
+	)
+	return err
+}
+
+const listOrphanUploads = `-- name: ListOrphanUploads :many
+SELECT u.id, u.ext FROM uploads u
+WHERE u.post_id IS NULL AND u.created_at < ?
+  AND u.id IS NOT (SELECT logo_upload_id FROM board_settings WHERE id = 1)
+`
+
+type ListOrphanUploadsRow struct {
+	ID  string
+	Ext string
+}
+
+func (q *Queries) ListOrphanUploads(ctx context.Context, createdAt int64) ([]ListOrphanUploadsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listOrphanUploads, createdAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListOrphanUploadsRow{}
+	for rows.Next() {
+		var i ListOrphanUploadsRow
+		if err := rows.Scan(&i.ID, &i.Ext); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPostUploads = `-- name: ListPostUploads :many
+SELECT id, ext, width, height, bytes, post_id, position, guest_id, admin_id, ip_hash, created_at FROM uploads WHERE post_id = ? ORDER BY position, id
+`
+
+func (q *Queries) ListPostUploads(ctx context.Context, postID sql.NullInt64) ([]Upload, error) {
+	rows, err := q.db.QueryContext(ctx, listPostUploads, postID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Upload{}
+	for rows.Next() {
+		var i Upload
+		if err := rows.Scan(
+			&i.ID,
+			&i.Ext,
+			&i.Width,
+			&i.Height,
+			&i.Bytes,
+			&i.PostID,
+			&i.Position,
+			&i.GuestID,
+			&i.AdminID,
+			&i.IpHash,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
