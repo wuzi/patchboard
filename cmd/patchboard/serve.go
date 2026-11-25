@@ -10,13 +10,14 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
-	"testing/fstest"
 	"time"
 
 	"patchboard/internal/clock"
 	"patchboard/internal/config"
 	"patchboard/internal/server"
 	"patchboard/internal/store"
+	"patchboard/internal/uploads"
+	"patchboard/internal/web"
 )
 
 func serve(getenv func(string) string, stderr io.Writer) error {
@@ -34,10 +35,11 @@ func serve(getenv func(string) string, stderr io.Writer) error {
 	if err := store.Migrate(ctx, db); err != nil {
 		return fmt.Errorf("migrate: %w", err)
 	}
-	h, err := server.New(server.Deps{Cfg: cfg, DB: db, Clock: clock.Real{}, WebFS: fstest.MapFS{}})
+	h, err := server.New(server.Deps{Cfg: cfg, DB: db, Clock: clock.Real{}, WebFS: web.Dist()})
 	if err != nil {
 		return err
 	}
+	go cleanupLoop(ctx, uploads.NewService(db, clock.Real{}, nil, nil, cfg.DataDir))
 	srv := &http.Server{Addr: cfg.Addr, Handler: h, ReadHeaderTimeout: 10 * time.Second}
 	go func() {
 		<-ctx.Done()
@@ -50,4 +52,26 @@ func serve(getenv func(string) string, stderr io.Writer) error {
 		return err
 	}
 	return nil
+}
+
+// cleanupLoop removes orphaned uploads at startup and then hourly.
+func cleanupLoop(ctx context.Context, svc *uploads.Service) {
+	run := func() {
+		if n, err := svc.CleanupOrphans(ctx); err != nil {
+			slog.Error("upload cleanup failed", "err", err)
+		} else if n > 0 {
+			slog.Info("removed orphaned uploads", "count", n)
+		}
+	}
+	run()
+	t := time.NewTicker(time.Hour)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			run()
+		}
+	}
 }

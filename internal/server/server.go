@@ -18,6 +18,7 @@ import (
 	"patchboard/internal/posts"
 	"patchboard/internal/updates"
 	"patchboard/internal/uploads"
+	"patchboard/internal/web"
 )
 
 type Deps struct {
@@ -68,6 +69,7 @@ func New(d Deps) (http.Handler, error) {
 		_, _ = w.Write([]byte("ok"))
 	})
 	mux.Handle("POST /api/markdown/preview", markdown.PreviewHandler(d.Limiter))
+	mux.Handle("/", web.Handler(d.WebFS, metaSource{cfg: d.Cfg, board: boardSvc, posts: postsSvc}))
 	mux.Handle("/api/", httpx.HandlerFunc(func(w http.ResponseWriter, r *http.Request) error {
 		return httpx.ErrNotFound
 	}))
