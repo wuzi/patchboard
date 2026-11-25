@@ -5,12 +5,13 @@ import type { VoteAudit } from '../../core/api.types';
 import { I18n, type TKey } from '../../core/i18n/i18n';
 import { Toast } from '../../core/toast';
 import { Avatar } from '../../shared/avatar';
+import { BanForm } from './ban-form';
 
 type Voter = VoteAudit['voters'][number];
 
 @Component({
   selector: 'pb-vote-audit-dialog',
-  imports: [Avatar],
+  imports: [Avatar, BanForm],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <dialog #dialog class="pb-dialog" [attr.aria-label]="i18n.t('admin.voteAuditTitle')" (cancel)="$event.preventDefault(); close()">
@@ -29,13 +30,7 @@ type Voter = VoteAudit['voters'][number];
                 <button type="button" class="btn ghost danger" (click)="banning.set(v.guest.id)">{{ i18n.t('admin.ban') }}</button>
               </div>
               @if (banning() === v.guest.id) {
-                <form class="ban" (submit)="$event.preventDefault(); ban(v)">
-                  <label class="check"><input type="checkbox" [checked]="includeIp()" (change)="includeIp.set($any($event.target).checked)" />{{ i18n.t('admin.banIp') }}</label>
-                  <p class="muted note">{{ i18n.t('admin.banIpNote') }}</p>
-                  <input class="input" maxlength="200" [placeholder]="i18n.t('admin.banReason')" [value]="reason()" (input)="reason.set($any($event.target).value)" />
-                  <div class="actions-end"><button type="button" class="btn ghost" (click)="banning.set(null)">{{ i18n.t('common.cancel') }}</button>
-                    <button type="submit" class="btn danger">{{ i18n.t('admin.ban') }}</button></div>
-                </form>
+                <pb-ban-form [guestId]="v.guest.id" (done)="banning.set(null)" (cancelled)="banning.set(null)" />
               }
             </li>
           }
@@ -50,8 +45,7 @@ type Voter = VoteAudit['voters'][number];
     .who { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; }
     .mono { font-family: ui-monospace, monospace; font-size: 12px; }
     .flag { background: color-mix(in srgb, #f59e0b 20%, transparent); color: #b45309; }
-    .acts { display: flex; gap: 4px; margin-top: 6px; }
-    .ban { margin-top: 8px; } .note { margin: -8px 0 8px; font-size: 12px; }`,
+    .acts { display: flex; gap: 4px; margin-top: 6px; }`,
 })
 export class VoteAuditDialog {
   readonly postId = input.required<number>();
@@ -62,8 +56,6 @@ export class VoteAuditDialog {
   private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('dialog');
   protected readonly voters = signal<Voter[]>([]);
   protected readonly banning = signal<string | null>(null);
-  protected readonly includeIp = signal(true);
-  protected readonly reason = signal('');
 
   constructor() {
     afterNextRender(() => {
@@ -88,17 +80,6 @@ export class VoteAuditDialog {
     try {
       await firstValueFrom(this.api.removeVote(this.postId(), v.guest.id));
       await this.load();
-    } catch (e) {
-      this.toast.error(e);
-    }
-  }
-
-  protected async ban(v: Voter): Promise<void> {
-    try {
-      await firstValueFrom(this.api.ban({ guestId: v.guest.id, includeIp: this.includeIp(), reason: this.reason() }));
-      this.banning.set(null);
-      this.reason.set('');
-      this.toast.show(this.i18n.t('common.saved'));
     } catch (e) {
       this.toast.error(e);
     }

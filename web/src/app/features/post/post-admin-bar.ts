@@ -7,6 +7,7 @@ import { BoardStore } from '../../core/board.store';
 import { I18n } from '../../core/i18n/i18n';
 import { Toast } from '../../core/toast';
 import { Icon } from '../../shared/icon';
+import { BanForm } from '../admin/ban-form';
 import { MergeDialog } from '../admin/merge-dialog';
 import { StatusChangeDialog } from '../admin/status-change-dialog';
 import { VoteAuditDialog } from '../admin/vote-audit-dialog';
@@ -14,14 +15,19 @@ import { VoteAuditDialog } from '../admin/vote-audit-dialog';
 /** Team-only controls inside the post modal. */
 @Component({
   selector: 'pb-post-admin-bar',
-  imports: [Icon, MergeDialog, StatusChangeDialog, VoteAuditDialog],
+  imports: [Icon, BanForm, MergeDialog, StatusChangeDialog, VoteAuditDialog],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @let p = post();
     <div class="bar">
       <label class="status"><span>{{ i18n.t('status.label') }}</span>
-        <select class="input" (change)="pick(+$any($event.target).value, $event)">
+        <select class="input" [attr.aria-label]="i18n.t('status.label')" (change)="pick(+$any($event.target).value, $event)">
           @for (s of store.statuses(); track s.id) {<option [value]="s.id" [selected]="s.id === p.statusId">{{ i18n.name(s.name) }}</option>}
+        </select></label>
+      <label class="status"><span>{{ i18n.t('post.tagLabel') }}</span>
+        <select class="input" [attr.aria-label]="i18n.t('post.tagLabel')" (change)="retag($any($event.target).value)">
+          <option value="" [selected]="p.tagId === null">{{ i18n.t('post.noTag') }}</option>
+          @for (t of store.tags(); track t.id) {<option [value]="t.id" [selected]="t.id === p.tagId">{{ i18n.name(t.name) }}</option>}
         </select></label>
       <button type="button" class="btn ghost" (click)="changeTo.set(p.statusId)"><pb-icon name="comment" />{{ i18n.t('admin.respond') }}</button>
       @if (p.pending) {<button type="button" class="btn ghost" (click)="act(api.approve(p.id))"><pb-icon name="check" />{{ i18n.t('admin.approve') }}</button>}
@@ -29,10 +35,14 @@ import { VoteAuditDialog } from '../admin/vote-audit-dialog';
       <button type="button" class="btn ghost" (click)="act(api.lock(p.id, !p.commentsLocked))"><pb-icon [name]="p.commentsLocked ? 'unlock' : 'lock'" />{{ i18n.t(p.commentsLocked ? 'admin.unlock' : 'admin.lock') }}</button>
       <button type="button" class="btn ghost" (click)="audit.set(true)"><pb-icon name="up" />{{ i18n.t('admin.votes') }}</button>
       <button type="button" class="btn ghost" (click)="merging.set(true)"><pb-icon name="merge" />{{ i18n.t('admin.merge') }}</button>
+      @if (p.author.kind === 'guest') {
+        <button type="button" class="btn ghost danger" (click)="banning.set(!banning())"><pb-icon name="ban" />{{ i18n.t('admin.banAuthor') }}</button>
+      }
       @if (p.deleted) {
         <button type="button" class="btn ghost" (click)="restore()"><pb-icon name="restore" />{{ i18n.t('common.restore') }}</button>
       }
     </div>
+    @if (banning()) {<pb-ban-form [guestId]="p.author.id" (done)="banning.set(false)" (cancelled)="banning.set(false)" />}
     @if (changeTo() !== null) {
       <pb-status-change-dialog [post]="p" [toStatusId]="changeTo()" (done)="statusChanged()" (cancelled)="changeTo.set(null)" />
     }
@@ -58,6 +68,7 @@ export class PostAdminBar {
   protected readonly changeTo = signal<number | null>(null);
   protected readonly merging = signal(false);
   protected readonly audit = signal(false);
+  protected readonly banning = signal(false);
 
   protected pick(statusId: number, e: Event): void {
     (e.target as HTMLSelectElement).value = String(this.post().statusId); // the dialog decides
@@ -70,7 +81,7 @@ export class PostAdminBar {
     this.changed.emit();
   }
 
-  protected async act(op: ReturnType<Api['pin']>): Promise<void> {
+  protected async act(op: ReturnType<Api['pin']> | ReturnType<Api['updatePost']>): Promise<void> {
     try {
       await firstValueFrom(op);
       this.events.changed();
@@ -78,6 +89,10 @@ export class PostAdminBar {
     } catch (e) {
       this.toast.error(e);
     }
+  }
+
+  protected retag(value: string): void {
+    this.act(this.api.updatePost(this.post().id, value ? { tagId: +value } : { clearTag: true }));
   }
 
   protected async restore(): Promise<void> {

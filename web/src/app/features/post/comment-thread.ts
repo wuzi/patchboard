@@ -9,11 +9,12 @@ import { Toast } from '../../core/toast';
 import { Avatar } from '../../shared/avatar';
 import { Icon } from '../../shared/icon';
 import { MarkdownEditor } from '../../shared/markdown-editor/markdown-editor';
+import { BanForm } from '../admin/ban-form';
 import { CommentForm } from './comment-form';
 
 @Component({
   selector: 'pb-comment-thread',
-  imports: [NgTemplateOutlet, Avatar, Icon, CommentForm, MarkdownEditor],
+  imports: [NgTemplateOutlet, Avatar, Icon, CommentForm, MarkdownEditor, BanForm],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ol class="thread">
@@ -57,11 +58,15 @@ import { CommentForm } from './comment-form';
               @if (top && (!locked() || me.isAdmin())) {
                 <button type="button" class="act" (click)="replyTo.set(c.id)">{{ i18n.t('comment.reply') }}</button>
               }
+              @if (me.isAdmin() && c.author.kind === 'guest') {
+                <button type="button" class="act" (click)="banning.set(banning() === c.id ? null : c.id)">{{ i18n.t('admin.banAuthor') }}</button>
+              }
               @if (c.canEdit && editing() !== c.id) {
                 <button type="button" class="act" (click)="edit(c)">{{ i18n.t('common.edit') }}</button>
                 <button type="button" class="act" (click)="remove(c)">{{ i18n.t('common.delete') }}</button>
               }
             </div>
+            @if (banning() === c.id) {<pb-ban-form [guestId]="c.author.id" (done)="banning.set(null)" (cancelled)="banning.set(null)" />}
           </div>
         </article>
       }
@@ -101,6 +106,7 @@ export class CommentThread {
   protected readonly replyTo = signal<number | null>(null);
   protected readonly editing = signal<number | null>(null);
   protected readonly draft = signal('');
+  protected readonly banning = signal<number | null>(null);
 
   protected async toggleLike(c: Comment): Promise<void> {
     try {

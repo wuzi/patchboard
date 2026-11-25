@@ -172,6 +172,7 @@ export const pt = {
   'admin.respond': 'Responder como equipe',
   'admin.deleteImage': 'Excluir imagem',
   'admin.mergeInto': 'Unir a este',
+  'admin.banAuthor': 'Banir autor',
   'admin.searchPosts': 'Buscar post…',
 
   'status.label': 'Status',

@@ -174,6 +174,7 @@ export const en: Record<TKey, string> = {
   'admin.respond': 'Respond as the team',
   'admin.deleteImage': 'Delete image',
   'admin.mergeInto': 'Merge into this',
+  'admin.banAuthor': 'Ban author',
   'admin.searchPosts': 'Search posts…',
 
   'status.label': 'Status',
