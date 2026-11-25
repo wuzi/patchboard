@@ -1,0 +1,83 @@
+<dialog #dialog class="pb-dialog post" (cancel)="onCancel($event)" (click)="onBackdrop($event)" [attr.aria-label]="post()?.title ?? ''">
+  @if (post(); as p) {
+    <div class="scroll">
+      <header class="top">
+        <pb-vote-button [postId]="p.id" [count]="p.voteCount" [voted]="p.voted" size="lg" (changed)="onVote()" />
+        <div class="heading">
+          @if (editing()) {
+            <input class="input title-input" [value]="draftTitle()" maxlength="120" [attr.aria-label]="i18n.t('post.titleLabel')"
+              (input)="draftTitle.set($any($event.target).value)" />
+          } @else {
+            <h2>{{ p.title }}</h2>
+          }
+          <p class="by">
+            <pb-avatar [seed]="p.author.id" [size]="24" />
+            <span>{{ i18n.t('post.addedBy', { name: authorName(p), date: i18n.date(p.createdAt, 'long') }) }}</span>
+            @if (p.author.kind === 'admin') {<span class="team-badge">{{ i18n.t('author.team') }}</span>}
+          </p>
+        </div>
+        <div class="corner">
+          <button type="button" class="icon-btn" [attr.aria-label]="i18n.t('post.share')" (click)="share(p)"><pb-icon name="link" /></button>
+          <button type="button" class="icon-btn" [attr.aria-label]="i18n.t('common.close')" (click)="close()"><pb-icon name="close" /></button>
+        </div>
+      </header>
+
+      <div class="chips">
+        <pb-status-chip [statusId]="p.statusId" />
+        @if (tag(); as t) {<span class="chip">{{ i18n.name(t.name) }}</span>}
+        @if (p.pending) {<span class="chip">{{ i18n.t('post.pending') }}</span>}
+        <span class="count"><pb-icon name="comment" />{{ p.commentCount }}</span>
+      </div>
+
+      @if (p.deleted) {<p class="notice">{{ i18n.t('post.deleted') }}</p>}
+
+      @if (editing()) {
+        <pb-markdown-editor [(value)]="draftBody" [placeholder]="i18n.t('post.bodyPlaceholder')" [rows]="6" />
+        <div class="row">
+          <button type="button" class="btn ghost" (click)="editing.set(false)">{{ i18n.t('common.cancel') }}</button>
+          <button type="button" class="btn primary" (click)="saveEdit(p)">{{ i18n.t('common.save') }}</button>
+        </div>
+      } @else if (p.bodyHtml) {
+        <div class="md body" [innerHTML]="p.bodyHtml"></div>
+      }
+
+      @if (p.images.length) {
+        <div class="images">
+          @for (img of p.images; track img.id; let i = $index) {
+            <a [href]="img.url" target="_blank" rel="noopener"><img [src]="img.url" [width]="img.width" [height]="img.height"
+              [alt]="i18n.t('post.imageAlt', { n: i + 1 })" loading="lazy" /></a>
+          }
+        </div>
+      }
+
+      @if (p.response; as r) {
+        <section class="response">
+          <p class="by"><pb-avatar [seed]="r.author.id" [size]="22" /><strong>{{ r.author.name }}</strong>
+            <span class="team-badge">{{ i18n.t('author.team') }}</span><span class="muted">{{ i18n.date(r.at) }}</span></p>
+          <div class="md" [innerHTML]="r.html"></div>
+        </section>
+      }
+
+      @if ((p.canEdit || p.canDelete) && !editing()) {
+        <div class="owner">
+          @if (p.canEdit) {<button type="button" class="btn ghost" (click)="startEdit(p)"><pb-icon name="edit" />{{ i18n.t('common.edit') }}</button>}
+          @if (p.canDelete) {<button type="button" class="btn ghost danger" (click)="remove(p)"><pb-icon name="trash" />{{ i18n.t('common.delete') }}</button>}
+        </div>
+      }
+
+      <section class="comments">
+        <h3>{{ i18n.t('comment.title') }} <span class="muted">{{ p.commentCount }}</span></h3>
+        <pb-comment-thread [postId]="p.id" [comments]="p.comments" [locked]="p.commentsLocked" (changed)="onCommented()" />
+      </section>
+    </div>
+    <footer class="compose">
+      @if (p.commentsLocked && !me.isAdmin()) {
+        <p class="muted locked">{{ i18n.t('comment.locked') }}</p>
+      } @else if (!p.deleted) {
+        <pb-comment-form [postId]="p.id" (posted)="onCommented()" />
+      }
+    </footer>
+  } @else {
+    <p class="loading">{{ i18n.t('common.loading') }}</p>
+  }
+</dialog>

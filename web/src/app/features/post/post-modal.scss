@@ -1,0 +1,30 @@
+dialog.post[open] { display: flex; flex-direction: column; overflow: hidden; }
+.scroll { overflow-y: auto; padding: 28px 28px 8px; }
+.top { display: flex; gap: 16px; align-items: flex-start; }
+.heading { flex: 1; min-width: 0; }
+h2 { margin: 4px 0 6px; font-size: 24px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+.title-input { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+.by { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--pb-muted); font-size: 14px; flex-wrap: wrap; }
+.by strong { color: var(--pb-text); font-weight: 600; }
+.corner { display: flex; gap: 2px; margin: -6px -10px 0 0; }
+.chips { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 18px 0 20px; padding-bottom: 18px; border-bottom: 1px solid var(--pb-border); }
+.count { display: inline-flex; align-items: center; gap: 4px; color: var(--pb-muted); font-size: 14px; }
+.count pb-icon { width: 16px; height: 16px; }
+.body { margin-bottom: 18px; }
+.notice { padding: 10px 14px; border-radius: 10px; background: var(--pb-column); color: var(--pb-muted); }
+.images { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-bottom: 18px; }
+.images img { display: block; width: 100%; height: 120px; object-fit: cover; border-radius: 10px; border: 1px solid var(--pb-border); }
+.response { margin: 0 0 18px; padding: 14px 16px; border-radius: 14px; border-left: 3px solid var(--pb-accent);
+  background: color-mix(in srgb, var(--pb-accent) 7%, var(--pb-surface)); }
+.response .by { margin-bottom: 6px; }
+.owner { display: flex; gap: 4px; margin: -6px 0 12px -8px; }
+.row { display: flex; justify-content: flex-end; gap: 8px; margin: 10px 0 18px; }
+.comments h3 { margin: 8px 0 16px; font-size: 17px; font-weight: 600; }
+.compose { padding: 16px 28px 20px; border-top: 1px solid var(--pb-border); background: var(--pb-surface); }
+.locked { margin: 0; font-size: 14px; }
+.loading { padding: 40px; text-align: center; color: var(--pb-muted); }
+@media (max-width: 600px) {
+  .scroll { padding: 20px 16px 8px; }
+  .compose { padding: 12px 16px 16px; }
+  h2 { font-size: 20px; }
+}

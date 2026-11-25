@@ -52,3 +52,7 @@
   @case ('roadmap') {<section class="body wide"></section>}
   @case ('updates') {<section class="body"></section>}
 }
+
+@if (view() === 'post' && idSlug(); as slug) {
+  <pb-post-modal [idSlug]="slug" />
+}

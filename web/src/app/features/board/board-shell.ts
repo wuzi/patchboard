@@ -7,13 +7,14 @@ import { BoardStore } from '../../core/board.store';
 import { I18n } from '../../core/i18n/i18n';
 import { NavState, type BoardView } from '../../core/nav-state';
 import { Icon } from '../../shared/icon';
+import { PostModal } from '../post/post-modal';
 import { boardQuery, ListView } from './list-view';
 
 type View = BoardView | 'post';
 
 @Component({
   selector: 'pb-board-shell',
-  imports: [RouterLink, Icon, ListView],
+  imports: [RouterLink, Icon, ListView, PostModal],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './board-shell.html',
   styleUrl: './board-shell.scss',
