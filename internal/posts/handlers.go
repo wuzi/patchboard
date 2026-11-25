@@ -10,6 +10,8 @@ import (
 // Register adds the post routes.
 func (s *Service) Register(mux *http.ServeMux, requireAdmin func(http.Handler) http.Handler) {
 	mux.Handle("POST /api/posts", httpx.HandlerFunc(s.handleCreate))
+	mux.Handle("GET /api/posts", httpx.HandlerFunc(s.handleList))
+	mux.Handle("GET /api/roadmap", httpx.HandlerFunc(s.handleRoadmap))
 	mux.Handle("GET /api/posts/{id}", httpx.HandlerFunc(s.handleGet))
 	mux.Handle("PATCH /api/posts/{id}", httpx.HandlerFunc(s.handleUpdate))
 	mux.Handle("DELETE /api/posts/{id}", httpx.HandlerFunc(s.handleDelete))
