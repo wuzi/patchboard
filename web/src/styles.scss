@@ -18,22 +18,22 @@
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --pb-bg: #121214;
-    --pb-surface: #1b1b1f;
-    --pb-column: #18181b;
-    --pb-chip: #26262b;
-    --pb-hover: #232328;
-    --pb-text: #ececf1;
-    --pb-muted: #9a9aa6;
-    --pb-border: #2c2c32;
-    --pb-strong: #ececf1;
-    --pb-on-strong: #121214;
-    --pb-shadow: none;
-    --pb-dialog-shadow: 0 24px 64px rgb(0 0 0 / .6);
-    color-scheme: dark;
-  }
+/* Light is the default for everyone. Dark only applies when <html data-theme="dark"> is set
+   (kept for a future theme switch; the system dark-mode setting is ignored). */
+:root[data-theme='dark'] {
+  --pb-bg: #121214;
+  --pb-surface: #1b1b1f;
+  --pb-column: #18181b;
+  --pb-chip: #26262b;
+  --pb-hover: #232328;
+  --pb-text: #ececf1;
+  --pb-muted: #9a9aa6;
+  --pb-border: #2c2c32;
+  --pb-strong: #ececf1;
+  --pb-on-strong: #121214;
+  --pb-shadow: none;
+  --pb-dialog-shadow: 0 24px 64px rgb(0 0 0 / .6);
+  color-scheme: dark;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
