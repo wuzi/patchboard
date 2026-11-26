@@ -1,4 +1,4 @@
-<img src="assets/icon.svg" width="64" height="64" alt="">
+**Archived in favor of [kiska](https://github.com/wuzi/kiska)**
 
 # PatchBoard
 
